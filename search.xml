@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>java集合框架详解</title>
+    <title>ArrayList源码分析</title>
     <url>/post/3fb8877a.html</url>
     <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><!-- 为什么需要ArrayList，ArrayList 解决了什么问题? -->
 
