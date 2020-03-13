@@ -111,13 +111,17 @@
 <li><strong>对象终结原则</strong>：对象的初始化完成先于finalize（）的开始</li>
 <li><strong>传递性</strong>： a先于b  b先于c 则a先于c</li>
 </ol>
-<h1 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h1><br/>
+<h1 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h1><p>本文首先了解了并发和并行的基本概念，然后分别通过系统内存模型，和java内存模型了解了系统内存已经java内存对于并发三大特性的处理。</p>
+<p>内存模型 通过总线锁 缓存锁 缓存一致性协议 内存屏障来保障并发的可靠性</p>
+<p>java内存模型通过 基础原子性操作  volatile 锁  happen-before原则来保证并发的可靠性</p>
+<br/>
 <br/>
 <br/>
 <br/>
 
+
 <blockquote>
-<p><a href="https://blog.51cto.com/14220760/2370118?source=dra" target="_blank" rel="noopener">https://blog.51cto.com/14220760/2370118?source=dra</a><br><a href="http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf" target="_blank" rel="noopener">http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf</a></p>
+<p><a href="http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf" target="_blank" rel="noopener">http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf</a><br><a href="https://blog.51cto.com/14220760/2370118?source=dra" target="_blank" rel="noopener">https://blog.51cto.com/14220760/2370118?source=dra</a></p>
 </blockquote>
 ]]></content>
       <categories>
