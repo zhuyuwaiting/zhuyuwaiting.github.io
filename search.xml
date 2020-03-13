@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>java并发综述</title>
+    <title>java并发理论</title>
     <url>/post/ab0f6be5.html</url>
     <content><![CDATA[<h1 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h1><p>当我们去网上搜索并发的时候，总是能看到并行，并发并行这两个概念似乎总是不分家。那么我们来看看并发并行都有些什么区别：</p>
 <blockquote>
