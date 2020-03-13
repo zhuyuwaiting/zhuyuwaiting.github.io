@@ -3,8 +3,7 @@
   <entry>
     <title>java并发综述</title>
     <url>/post/ab0f6be5.html</url>
-    <content><![CDATA[<p><img src="../resource/java/%E5%B9%B6%E5%8F%91.png" alt=""></p>
-<h1 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h1><p>当我们去网上搜索并发的时候，总是能看到并行，并发并行这两个概念似乎总是不分家。那么我们来看看并发并行都有些什么区别：</p>
+    <content><![CDATA[<h1 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h1><p>当我们去网上搜索并发的时候，总是能看到并行，并发并行这两个概念似乎总是不分家。那么我们来看看并发并行都有些什么区别：</p>
 <blockquote>
 <p>Concurrency is about dealing with lots of things at once. Parallelism is about doing lots of things at once.</p>
 </blockquote>
@@ -123,6 +122,20 @@
 <blockquote>
 <p><a href="http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf" target="_blank" rel="noopener">http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf</a><br><a href="https://blog.51cto.com/14220760/2370118?source=dra" target="_blank" rel="noopener">https://blog.51cto.com/14220760/2370118?source=dra</a></p>
 </blockquote>
+]]></content>
+      <categories>
+        <category>java</category>
+        <category>java并发</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+        <tag>并发</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>java并发综述</title>
+    <url>/post/ebfd7e71.html</url>
+    <content><![CDATA[<p><img src="../resource/java/%E5%B9%B6%E5%8F%91.png" alt=""></p>
 ]]></content>
       <categories>
         <category>java</category>
