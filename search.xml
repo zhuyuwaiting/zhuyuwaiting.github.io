@@ -1,6 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>java线程概念</title>
+    <url>/post/31afbc55.html</url>
+    <content><![CDATA[<h1 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h1><p>并发在面试中基本可以说是必问的一个点，而线程又是并发得以实现的一个重要的点，线程无疑非常的重要，那么本章就来看看线程的基础知识。</p>
+<h1 id="线程、进程、协程"><a href="#线程、进程、协程" class="headerlink" title="线程、进程、协程"></a>线程、进程、协程</h1><p>谈到线程，基本都会谈到进程，那么线程进程有都是些什么呢，都有哪些区别，什么又是协程呢？</p>
+<h2 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h2><p>进程（Process）是计算机中的程序关于某数据集合上的一次运行活动，是系统进行资源分配和调度的基本单位，是操作系统结构的基础。</p>
+<p>线程是CPU调度和分派的基本单位，它可与同属一个进程的其他的线程共享进程所拥有的全部资源。</p>
+<p><strong>区别：进程是操作系统资源分配的基本单位，而线程是任务调度和执行的基本单位</strong></p>
+<p>线程是比进程更轻量的执行单位，可以把一个进程的资源分配和执行调度分开，各个线程既可以共享进程资源（内存地址、文件I/O等），又可以独立调度。</p>
+<h3 id="线程的实现"><a href="#线程的实现" class="headerlink" title="线程的实现"></a>线程的实现</h3><ol>
+<li>使用内核线程实现 1:1</li>
+<li>使用用户线程实现 1:n</li>
+<li>使用用户线程加轻量级进程实现 n:m</li>
+</ol>
+<p><strong><em>内核线程</em></strong></p>
+<p>内核线程（KLT kernel-level thread）是由操作系统内核支持的线程，这种线程由内核来完成线程切换，内核通过操纵调度器来对线程进行调度，并负责将线程的任务映射到各个处理器上。每个内核线程可以视为内核的一个分身，这样操作系统就有能力同时处理多件事情，支持多线程的内核就称为多线程内核.</p>
+<p><strong><em>轻量级进程(LWP):</em></strong></p>
+<p>轻量级进程就是我们通常意义上所讲的线程，由于每个轻量级进程都由一个内核线程支持，因此只有先支持内核线程，才能有轻量级进程。由于内核线程的支持，每个轻量级进程都成为一个独立的调度单元，即使其中某一个轻量级进程在系统调用中被阻塞了，也不会影响整个进程继续工作.首先，由于是基于内核线程实现的，所以各种线程操作，如创建、析构及同步，都需要进行系统调用。而系统调用的代价相对较高，需要在用户态（UserMode）和内核态（Kernel Mode）中来回切换。其次，每个轻量级进程都需要有一个内核线程的支持，因此轻量级进程要消耗一定的内核资源（如内核线程的栈空间），因此一个系统支持轻量级进程的数量是有限的</p>
+<p>内核线程实现：<br><img src="../resource/java/%E5%86%85%E6%A0%B8%E7%BA%A7%E7%BA%BF%E7%A8%8B.jpg" alt=""></p>
+<p>linux 采用的是内核线程的实现方式</p>
+<p><strong><em>用户线程:</em></strong></p>
+<p>广义上来讲，一个线程只要不是内核线程，都可以认为是用户线程（User Thread，UT）的一种，而狭义上的用户线程指的是完全建立在用户空间的线程库上，系统内核不能感知到用户线程的存在及如何实现的。用户线程的建立、同步、销毁和调度完全在用户态中完成，不需要内核的帮助。</p>
+<p>用户线程的优势在于不需要系统内核支援，劣势也在于没有系统内核的支援，所有的线程操作都需要由用户程序自己去处理。线程的创建、销毁、切换和调度都是用户必须考虑的问题，而且由于操作系统只把处理器资源分配到进程，那诸如“阻塞如何处理”“多处理器系统中如何将线程映射到其他处理器上”这类问题解决起来将会异常困难，甚至有些是不可能实现的</p>
+<p>用户线程的实现方式</p>
+<p><img src="../resource/java/%E7%94%A8%E6%88%B7%E7%BA%BF%E7%A8%8B.jpg" alt=""></p>
+<p>混合线程实现方式：<br><img src="../resource/java/%E6%B7%B7%E5%90%88%E7%BA%BF%E7%A8%8B.jpg" alt=""></p>
+<h3 id="java-线程的实现"><a href="#java-线程的实现" class="headerlink" title="java 线程的实现"></a>java 线程的实现</h3><p>JDK1.3开始，主流java虚拟机线程模型都是基于操作系统原生线程模型来实现的，也就是采用的是 1:1的内核线程模型。</p>
+<p>例如 HotSpot ，他的每一个java线程都是直接映射到一个操作系统原生线程来实现的，   中间没有额外的间接结构，所以调度全权交由操作系统来决定，所以何时冻结或唤醒线程、该给线程分配多少处理器执行时间、该把线程安排给哪个处理器核心去执行等，都是由操作系统完成的，也都是由操作系统全权决定的。</p>
+<h3 id="java-线程的调度"><a href="#java-线程的调度" class="headerlink" title="java 线程的调度"></a>java 线程的调度</h3><ol>
+<li>协同式线程调度</li>
+<li>抢占式线程调度</li>
+</ol>
+<p><strong><em>协同式线程调度：</em></strong>线程的执行时间由线程本身来控制，线程把自己的工作执行完了之后，要主动通知系统切换到另外一个线程上去</p>
+<p><strong><em>抢占式线程调度：</em></strong>每个线程将由系统来分配执行时间，线程的切换不由线程本身来决定</p>
+<p><strong>Java使用的线程调度方式就是抢占式调度</strong></p>
+<h3 id="线程的状态："><a href="#线程的状态：" class="headerlink" title="线程的状态："></a>线程的状态：</h3><p><img src="../resource/java/%E7%BA%BF%E7%A8%8B%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.jpg" alt=""></p>
+<h3 id="java线程的创建"><a href="#java线程的创建" class="headerlink" title="java线程的创建"></a>java线程的创建</h3><ol>
+<li>继承自Thread</li>
+<li>实现Runnable /Callable接口。</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyThread</span> <span class="keyword">extends</span> <span class="title">Thread</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.run();</span><br><span class="line">        System.out.println(<span class="string">"hellow_world!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyRunnable</span> <span class="keyword">implements</span> <span class="title">Runnable</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"通过Runnable创建的线程!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyCallable</span> <span class="keyword">implements</span> <span class="title">Callable</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"通过Callable创建的线程!"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="协程-纤程-fiber-light-thread"><a href="#协程-纤程-fiber-light-thread" class="headerlink" title="协程(纤程) fiber light-thread"></a>协程(纤程) fiber light-thread</h2><h3 id="为什么需要协程"><a href="#为什么需要协程" class="headerlink" title="为什么需要协程"></a>为什么需要协程</h3><p>前面我们说了，java线程是1：1的内核线程的实现方式，调度方式也是抢占式调度。</p>
+<p>但是操作系统的线程实现方式是为了通用性，其需要支持所有类型的并发操作。故而其线程的切换需要进行线程上下文的切换操作，对于一些IO密集型操作，其线程上下文的切换开销也是比较大的，因为线程切换需要响应系统中断，进行保存和恢复现场。</p>
+<p>也就出现了协程（coroutine）.</p>
+<h3 id="java的实现"><a href="#java的实现" class="headerlink" title="java的实现"></a>java的实现</h3><p>java对于协程的实现方式是 纤程(Fiber)，或者是 light weight thread。</p>
+<p>light weight thread 的实现方式是在底层1:1内核线程的基础上，进行封装了轻量级线程的方式来实现，</p>
+<p><img src="../resource/java/lightWeightThread.jpg" alt=""></p>
+<p>黄色的部分表示的就是新的并发方式 light weight thread。 多个light weight thread 可以共用一个内核级线程</p>
+<p>light weight thread 由两部分构成 </p>
+<ol>
+<li>Continuation  执行过程</li>
+<li>Scheduler     调度器</li>
+</ol>
+<p>执行过程负责维护现场，调度器负责编排所有要执行的代码的执行顺序。<br>其示例如下图:</p>
+<p><img src="../resource/java/Fiber%E7%A4%BA%E4%BE%8B.jpeg" alt=""></p>
+<h3 id="协程为什么开销小"><a href="#协程为什么开销小" class="headerlink" title="协程为什么开销小"></a>协程为什么开销小</h3><p>要解释这个问题，我们首先要解释什么场景适合使用协程：</p>
+<ol>
+<li>协程将保存、恢复现场，和调度的工作从操作系统手中拿过来，那么对于一些IO密级性场景，就可以通过简单的先进先出的调度，使用完全无锁调度，调度开销变会减少。</li>
+<li>协程更加的轻量，64位Linux上HotSpot的线程栈容量默认是1MB，而一个协程的栈通常在几百个字节到几KB之间。</li>
+</ol>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>java目前都是基于1：1的内核线程实现抢占式调度的线程，该线程的上下文切换，调度等均交由操作系统来进行，而线程阻塞唤醒的调度，很消耗时间。于是便出现了fiber 纤程，在调度以及栈大小上进行优化，目前fibers项目是 project Loom 。 该特性预计会加入的到JVM的原生支持，并且JDK对外的api接口都会进行适配，希望JDK13的时候有望见到。</p>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><blockquote>
+<p>&lt;深入理解java虚拟机&gt;</p>
+</blockquote>
+<blockquote>
+<p><a href="https://www.youtube.com/watch?spm=ata.13261165.0.0.7e8d73b6UFWQzK&v=lIq-x_iI-kc" target="_blank" rel="noopener">light weight thread相关介绍</a></p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>java</category>
+        <category>java并发</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+        <tag>并发</tag>
+        <tag>线程</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>java并发理论</title>
     <url>/post/ab0f6be5.html</url>
     <content><![CDATA[<h1 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h1><p>当我们去网上搜索并发的时候，总是能看到并行，并发并行这两个概念似乎总是不分家。那么我们来看看并发并行都有些什么区别：</p>
