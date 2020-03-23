@@ -44,6 +44,10 @@
 <h2 id="单例模式的优化-双重检查锁"><a href="#单例模式的优化-双重检查锁" class="headerlink" title="单例模式的优化(双重检查锁)"></a>单例模式的优化(双重检查锁)</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">static</span> Singleton instace;   </span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Singleton <span class="title">getInstance</span><span class="params">()</span></span>&#123;   </span><br><span class="line"><span class="comment">//第一次null检查     </span></span><br><span class="line"><span class="keyword">if</span>(instance == <span class="keyword">null</span>)&#123;            </span><br><span class="line">    <span class="keyword">synchronized</span>(Singleton<span class="class">.<span class="keyword">class</span>) </span>&#123;    <span class="comment">//1     </span></span><br><span class="line">        <span class="comment">//第二次null检查       </span></span><br><span class="line">        <span class="keyword">if</span>(instance == <span class="keyword">null</span>)&#123;            <span class="comment">//2  </span></span><br><span class="line">            instance = <span class="keyword">new</span> Singleton();<span class="comment">//3  </span></span><br><span class="line">        &#125;  </span><br><span class="line">    &#125;           </span><br><span class="line">&#125;  </span><br><span class="line"><span class="keyword">return</span> instance;&#125;</span><br></pre></td></tr></table></figure>
 
 
+
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><blockquote>
+<p><a href="https://www.jianshu.com/p/ccfe24b63d87" target="_blank" rel="noopener">https://www.jianshu.com/p/ccfe24b63d87</a><br><a href="https://www.cnblogs.com/ouyxy/p/7242563.html" target="_blank" rel="noopener">https://www.cnblogs.com/ouyxy/p/7242563.html</a></p>
+</blockquote>
 ]]></content>
       <categories>
         <category>java</category>
