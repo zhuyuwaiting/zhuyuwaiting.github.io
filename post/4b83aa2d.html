@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="java,并发," />
+  <meta name="keywords" content="java,并发,JUC,锁," />
 
 
 
@@ -79,27 +79,23 @@
 
 
 
-<meta name="description" content="区分并发并行概念，了解并发的三个特性，以及内存模型和java内存模型为了并发的可靠所做的事情。">
+<meta name="description" content="ReentrantLock为锁常用类，它是一个可重入的互斥锁 Lock，它具有与使用 synchronized 方法和语句所访问的隐式监视器锁相同的一些基本行为和语义，但功能更强大。本节就来看看ReentrantLock的实现。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="java并发理论">
-<meta property="og:url" content="http://zhuyuwaiting.github.io/post/ab0f6be5.html">
+<meta property="og:title" content="ReentrantLock源码分析">
+<meta property="og:url" content="http://zhuyuwaiting.github.io/post/4b83aa2d.html">
 <meta property="og:site_name" content="luke&#39;s blog">
-<meta property="og:description" content="区分并发并行概念，了解并发的三个特性，以及内存模型和java内存模型为了并发的可靠所做的事情。">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E5%B9%B6%E5%8F%91%E5%B9%B6%E8%A1%8C.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E5%8E%9F%E5%AD%90%E6%80%A7%E9%97%AE%E9%A2%98.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E5%86%AF%E6%B4%9B%E4%BC%8A%E6%9B%BC%E4%BD%93%E7%B3%BB.png">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/systemMomery.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E7%8B%AC%E5%8D%A0%E6%B5%81%E7%A8%8B.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E7%BC%93%E5%AD%98%E9%98%9F%E5%88%97%E5%92%8C%E5%A4%B1%E6%95%88%E9%98%9F%E5%88%97.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B.jpg">
-<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E7%BA%BF%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1.jpg">
-<meta property="article:published_time" content="2020-03-13T14:46:21.000Z">
-<meta property="article:modified_time" content="2020-03-13T14:46:21.000Z">
+<meta property="og:description" content="ReentrantLock为锁常用类，它是一个可重入的互斥锁 Lock，它具有与使用 synchronized 方法和语句所访问的隐式监视器锁相同的一些基本行为和语义，但功能更强大。本节就来看看ReentrantLock的实现。">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/Aqs%E7%BB%93%E6%9E%84.jpg">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/sync%E7%BB%A7%E6%89%BF.jpg">
+<meta property="article:published_time" content="2020-03-24T15:00:21.000Z">
+<meta property="article:modified_time" content="2020-03-24T15:00:21.000Z">
 <meta property="article:author" content="luke">
 <meta property="article:tag" content="java">
 <meta property="article:tag" content="并发">
+<meta property="article:tag" content="JUC">
+<meta property="article:tag" content="锁">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://zhuyuwaiting.github.io/resource/java/%E5%B9%B6%E5%8F%91%E5%B9%B6%E8%A1%8C.jpg">
+<meta name="twitter:image" content="http://zhuyuwaiting.github.io/resource/java/Aqs%E7%BB%93%E6%9E%84.jpg">
 
 
 
@@ -129,13 +125,13 @@
 
 
 
-  <link rel="canonical" href="http://zhuyuwaiting.github.io/post/ab0f6be5.html"/>
+  <link rel="canonical" href="http://zhuyuwaiting.github.io/post/4b83aa2d.html"/>
 
 
 
 
 
-  <title>java并发理论 | luke's blog</title>
+  <title>ReentrantLock源码分析 | luke's blog</title>
   
 
 
@@ -306,7 +302,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://zhuyuwaiting.github.io/post/ab0f6be5.html">
+    <link itemprop="mainEntityOfPage" href="http://zhuyuwaiting.github.io/post/4b83aa2d.html">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="luke">
@@ -323,7 +319,7 @@
 
         
         
-          <h2 class="post-title" itemprop="name headline">java并发理论</h2>
+          <h2 class="post-title" itemprop="name headline">ReentrantLock源码分析</h2>
         
 
         <div class="post-meta">
@@ -335,8 +331,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-03-13T22:46:21+08:00">
-                2020-03-13
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-03-24T23:00:21+08:00">
+                2020-03-24
               </time>
             
 
@@ -411,125 +407,36 @@
       
 
       
-        <h1 id="并发和并行"><a href="#并发和并行" class="headerlink" title="并发和并行"></a>并发和并行</h1><p>当我们去网上搜索并发的时候，总是能看到并行，并发并行这两个概念似乎总是不分家。那么我们来看看并发并行都有些什么区别：</p>
-<blockquote>
-<p>Concurrency is about dealing with lots of things at once. Parallelism is about doing lots of things at once.</p>
-</blockquote>
-<blockquote>
-<p>When an application is capable of executing two tasks virtually at same time, we call it concurrent application.Though here tasks run looks like simultaneously, but essentially they MAY not</p>
-</blockquote>
-<blockquote>
-<p>Parallelism does not require two tasks to exist. It literally physically run parts of tasks OR multiple tasks, at the same time using multi-core infrastructure of CPU, by assigning one core to each task or sub-task.<br>Parallelism requires hardware with multiple processing units, essentially. In single core CPU, you may get concurrency but NOT parallelism.</p>
-</blockquote>
-<p>百度是这样描述并发的<br>:在操作系统中，并发是指一个时间段中有几个程序都处于已启动运行到运行完毕之间，且这几个程序都是在同一个处理机上运行，但任一个时刻点上只有一个程序在处理机上运行。</p>
-<p>并行:<br>在操作系统中是指，一组程序按独立异步的速度执行，不等于时间上的重叠（同一个时刻发生)</p>
-<p>通过上面的描述，其实是可以有一些感觉建立的：</p>
-<ol>
-<li>并发是对于单cpu上多任务的场景来描述的，并发利用不同的CPU时间片，逻辑上是同时执行多项任务，事实的可能是多任务穿插在不同时间片上顺序执行</li>
-<li>并行是有多个cpu核心，不同的任务可以在同一刻同时执行。</li>
-<li>实际上对于多核cpu来说，现在的多线程也都是并行执行的。</li>
-</ol>
-<p><img src="../resource/java/%E5%B9%B6%E5%8F%91%E5%B9%B6%E8%A1%8C.jpg" alt=""></p>
-<h1 id="三大特性："><a href="#三大特性：" class="headerlink" title="三大特性："></a>三大特性：</h1><ol>
-<li>原子性</li>
-<li>可见性</li>
-<li>顺序行</li>
-</ol>
-<h2 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h2><p>原子性指的是一个或者多个操作在CPU执行过程中不被中断的特性。即要不全部执行完成，要不不执行。</p>
-<p>a++操作：</p>
-<ol>
-<li>加载a</li>
-<li>+1</li>
-<li>结果写入内存，赋值a</li>
-</ol>
-<p>a=0,如果两个线程同时执行 a++。 我们期望输出2，但是实际上<br><img src="../resource/java/%E5%8E%9F%E5%AD%90%E6%80%A7%E9%97%AE%E9%A2%98.jpg" alt=""><br>可能得到的结果是 1。 这便是原子性问题</p>
-<h2 id="可见性"><a href="#可见性" class="headerlink" title="可见性"></a>可见性</h2><p>可见性指的是当一个线程修改了共享变量后，其他线程能够立即得到修改的值。</p>
-<p>线程 1，2 共享同一个变量a, 如果1修改了2看不见，便会导致a变量值的不可预测性。</p>
-<h2 id="有序性"><a href="#有序性" class="headerlink" title="有序性"></a>有序性</h2><p>有序性指的是程序执行的顺序按照代码的先后顺序执行。</p>
-<p>一般来说，处理器为了提高程序的的运行效率，可能会对输入代码进行优化，它不保证程序中各个操作语句的执行先后数据同代码中的顺序一致，但是它会保证程序最终执行结果和代码顺序执行结果的一致性。</p>
-<p>如果处理器指令经过重排，单线程下指令重排会保证结果一致性，但是多线程情况下指令重排由于共享变量的存在，可能导致不可预测的结果。</p>
-<h1 id="内存模型"><a href="#内存模型" class="headerlink" title="内存模型"></a>内存模型</h1><p>了解完并发的基本概念，以及三大特性，我们来看看内存模型，为什么要了解系统的内存模型呢，因为并发的操作，在单核系统上实际上是多个任务穿插执行，多核系统上可能是多个cpu核心同时并行执行多任务。那么了解系统的内存模型，了解cpu，内存的交互就显得至关重要。</p>
-<p>我们知道经典的冯洛伊曼体系结构如下：<br><img src="../resource/java/%E5%86%AF%E6%B4%9B%E4%BC%8A%E6%9B%BC%E4%BD%93%E7%B3%BB.png" alt=""></p>
-<p>但是又由于存储器(主存)与处理器（CPU）之前的运算速度相差巨大（指数级）,故而，为了解决主存带来的耗时问题，引入了高速缓存。结构如下所示：<br><img src="../resource/java/systemMomery.jpg" alt=""></p>
-<h2 id="总线锁定"><a href="#总线锁定" class="headerlink" title="总线锁定"></a>总线锁定</h2><p>现代计算机一般都是多CPU，那么多CPU核心对于主内存中同一个区域的访问就会存在冲突的问题，也就引发了原子性，可见性，一致性等多个问题，那么是如何解决的呢？</p>
-<p><strong><em>总线锁:</em></strong>就是使用处理器提供的一个LOCK#信号，当一个处理器总线上输出此信号时，其它处理器的请求将被阻塞住，那么该处理器可以独占共享内存。如此多CPU的操作就变成了单cpu操作，也就没有并发问题了。</p>
-<h2 id="缓存锁定和缓存一致性"><a href="#缓存锁定和缓存一致性" class="headerlink" title="缓存锁定和缓存一致性"></a>缓存锁定和缓存一致性</h2><p>由于，我们只需要保证对某个内存地址的操作是原子的即可，但是总线锁把CPU和内存之间的通信锁住了，这使得在锁定期间，其他处理器也不能操作其他内存地址的数据，所以总线锁的开销比较大。目前，处理器在某些场合下使用缓存锁来代替总线索进行优化。</p>
-<p><strong><em>缓存锁</em></strong>就是指内存区域如果被缓存在处理器的缓存行中，并且在LOCK#操作期间，那么当它执行操作回写到内存时，处理器不在总线上声言LOCK#信号，而是修改内部的内存地址，并允许它的缓存一致性机制来保证操作的原子性，因为缓存一致性机制会阻止同时修改由两个以上处理器缓存的内存区域数据，其他处理器回写已被锁定的缓存行的数据时，就会使缓存无效。</p>
-<h3 id="缓存一致性-MESI"><a href="#缓存一致性-MESI" class="headerlink" title="缓存一致性 MESI"></a>缓存一致性 MESI</h3><p>MESI协议(Modified,Exclusive,Share,Invlid) 用四种标志来区分缓存数据的状态，以此来决定CPU何时把缓存的数据写入到内存，何时从缓存读取数据，何时从内存读取数据。</p>
-<p><strong>Modified(修改状态)</strong>:<br>当前缓存数据是有效的,数据还未同步到内存中去,通知其他缓存设置为Invlid</p>
-<p><strong>Exclusive(独占状态)</strong>:<br>当前缓存有效，并且只在当前缓存有，数据与内存一致</p>
-<p><strong>Share(共享状态)</strong>:<br>所有缓存公有，数据与内存一直</p>
-<p><strong>Invalid(无效状态)</strong>:<br>当前缓存无效。</p>
-<p>只有当缓存段处于E或M状态时，处理器才能去写它，也就是说只有这两种状态下，处理器是独占这个缓存段的。当处理器想写某个缓存段时，如果它没有独占权，它必须先发送一条“我要独占权”的请求给总线，这会通知其他处理器，把它们拥有的同一缓存段的拷贝失效（如果它们有的话）。只有在获得独占权后，处理器才能开始修改数据——并且此时，这个处理器知道，这个缓存段只有一份拷贝，在我自己的缓存里，所以不会有任何冲突。反之，如果有其他处理器想读取这个缓存段（我们马上能知道，因为我们一直在窥探总线），独占或已修改的缓存段必须先回到“共享”状态。如果是已修改的缓存段，那么还要先把内容回写到内存中。</p>
-<p><img src="../resource/java/%E7%8B%AC%E5%8D%A0%E6%B5%81%E7%A8%8B.jpg" alt=""></p>
-<p>如上图所示，可以发现，在CPU1失效缓存到CPU0可以修改之间，CPU0只能处于等待状态，这就比较浪费性能了。</p>
-<p><strong><em>Store Bufferes和Invalidate Queues</em></strong></p>
-<p>基于缓存一致性模型，提出了Store Bufferes 存储缓存的概念。</p>
-<p><strong>Store Bufferes 缓存存储</strong>，当处理器需要把修改写入缓存时，然后在写入内存这个过程时，我们处理器不需要等待了。只需要把指数据写入Store Bufferes，然后发生Invalidate消息给其它CPU，然后本CPU就可以去执行其它指令了，等到我们都收所有回复确认Invalidate Acknowledge消息，在把Store Bufferes消息写回缓存修改状态为（M），如果有其它CPU来读，就会刷新到内存，状态变为S。Store Bufferes 的作用是让 CPU 需要写的时候仅仅将其操作交给 Store Buffere，然后继续执行下去，Store Bufferes 在某个时刻就会完成一系列的同步行为。</p>
-<p>Store Bufferes 存储缓存 解放了CPU的等待时间，但是如果CPU同时处理的事情比较多，需要失效的缓存数据比较多，那么久会非常占用空间，于是设计出了Invalidate Queues</p>
-<p><strong>Invalidate Queues 失效队列：</strong>当别的CPU收到Invalidate消息时，把这个操作加入无效队列，然后快速返回Invalidate Acknowledge消息，让发起者做后续操作，然后Invalidate并不是马上处理，而只是加入了队列，也就是说其实不是立刻让本CPU的缓存数据失效，而是等CPU处理无效队列里的无效消息时。</p>
-<p>Store Bufferes和Invalidate Queues 分别从解放本次CPU等待时间，异步话对侧失效操作两个方面对缓存一致性模型进行了优化，也就成为了下面的结构：</p>
-<p><img src="../resource/java/%E7%BC%93%E5%AD%98%E9%98%9F%E5%88%97%E5%92%8C%E5%A4%B1%E6%95%88%E9%98%9F%E5%88%97.jpg" alt=""></p>
-<p><strong><em>可见性问题：</em></strong></p>
-<p>由于Store Buffers和Invalidate Queues的引入，导致CPU的操作变成了最终一致性，而这种最终一致性。而这种最终一致性，会导致在多核处理中，对于有依赖关系的变量修改就变的不可见了：</p>
-<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">void</span> foo(<span class="built_in">void</span>)&#123;</span><br><span class="line">    a = <span class="number">1</span>;</span><br><span class="line">    b = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">void</span> bar(<span class="built_in">void</span>)&#123;</span><br><span class="line">    <span class="keyword">while</span> (b == <span class="number">0</span>) <span class="keyword">continue</span>;</span><br><span class="line">    assert(a == <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+        <h1 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h1><p>ReentrantLock为锁常用类，它是一个可重入的互斥锁 Lock，它具有与使用 synchronized 方法和语句所访问的隐式监视器锁相同的一些基本行为和语义，但功能更强大。本节就来看看ReentrantLock的实现。</p>
+<p>可重入锁：可重入就是说某个线程已经获得某个锁，可以再次获取锁而不会出现死锁</p>
+<h1 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例:"></a>使用示例:</h1><figure class="highlight cs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title">X</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> final ReentrantLock <span class="keyword">lock</span> = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">m</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">        <span class="keyword">lock</span>.<span class="keyword">lock</span>();  <span class="comment">// block until condition holds</span></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// ... method body</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        <span class="keyword">lock</span>.unlock()</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>CPU0运行foo，CPU1运行bar。假设序列如下 ：假设cpu1之前运行过其他指令，有a的缓存，无b的缓存</p>
-<ol>
-<li>CPU0 要修改a ，写入Store Buffer 通知总线要独占，CPU1收到，放入Invalidate queue ,返回确认，CPU0把Store Buffer 内容写入缓存0。</li>
-<li>CPU0 要修改b， cpu独占b，直接写入。改为M</li>
-<li>CPU1 读取b，此时CPU0监听到，修改为S 回写内存，b==0循环结束</li>
-<li>CPU1读取缓存，由于已经有缓存了，但是其缓存队列 Invalidate queue中在等待执行，其顺序没法保证，如果已经失效，能读取到 a=1 如果还没失效，那就是之前缓存中的值。</li>
-</ol>
-<p>也就失去了修改的可见性。</p>
-<p>为了解决这个问题，底层增加了一个内存屏障（memory barrier）的指令：</p>
-<p>Store Memory Barrier(a.k.a. ST, SMB, smp_wmb)是一条告诉处理器在执行这之后的指令之前，应用所有已经在存储缓存（store buffer）中的保存的指令。<br>Load Memory Barrier (a.k.a. LD, RMB, smp_rmb)是一条告诉处理器在执行任何的加载前，先应用所有已经在失效队列中的失效操作的指令</p>
-<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">void</span> foo(<span class="built_in">void</span>)&#123;</span><br><span class="line">    a = <span class="number">1</span>;</span><br><span class="line">    smp_wmb()</span><br><span class="line">    b = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">void</span> bar(<span class="built_in">void</span>)&#123;</span><br><span class="line">    <span class="keyword">while</span> (b == <span class="number">0</span>) <span class="keyword">continue</span>;</span><br><span class="line">    smp_rmb()</span><br><span class="line">    assert(a == <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><h2 id="数据结构是一切的基础"><a href="#数据结构是一切的基础" class="headerlink" title="数据结构是一切的基础"></a>数据结构是一切的基础</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="type">Sync</span> sync;</span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> static <span class="class"><span class="keyword">class</span> <span class="title">Sync</span> <span class="keyword">extends</span> <span class="title">AbstractQueuedSynchronizer</span> </span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>此时，之前不走中的4中的问题就不在存在了，因为其a在写入之后，立刻就会执行刷新到缓存，assert(a==1)执行前，会先吧失效队列中的指令执行完毕</p>
-<h2 id="java-内存模型"><a href="#java-内存模型" class="headerlink" title="java 内存模型"></a>java 内存模型</h2><p>系统内存模型，通过总线锁，缓存锁和缓存一致性协议来保证并发的可靠，那么java内存模型又是怎么做的呢</p>
-<p><strong>由于java是跨平台的语言，所以java需要解决不同平台不同操作系统的内存访问的差异，以让java程序在各个平台下都能达到一致的访问效果。故而java需要定义一套模型，让java的并发内存访问操作不会产生歧义。</strong></p>
-<p>而java内存模型就是这样的产物。java内存模型主要定义了各种变量的访问规则。其规定所有变量都必须存储在主内存(此处表示虚拟机内存的一部分）中每条线程有自己的工作内存，保存该线程使用变量的工作副本。线程对变量的所有操作都必须在工作内存中完成。如下图所示：</p>
-<p><img src="../resource/java/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B.jpg" alt=""></p>
-<p>当一个线程进行更新的时候会通过线程间通信，让另一个线程从主内存中获取数据:<br><img src="../resource/java/%E7%BA%BF%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1.jpg" alt=""></p>
-<p>我们知道JMM java内存，对于是对于内存模型的抽象话管理，基础的操作都是操作系统调用去完成，故而原子性等特性都遵从于操作系统的指令级原子性，或者有更多的封装。</p>
-<p>但是由于编译优化，指令级重排序等问题，会保证程序执行的顺序最终一致，对于单线程来说，没有问题，但是多线程会造成可见性，顺序性问题。</p>
-<h3 id="原子性-1"><a href="#原子性-1" class="headerlink" title="原子性"></a>原子性</h3><p><strong>java 定义了8种原子性操作</strong></p>
-<ol>
-<li>lock（锁定）：作用于主内存的变量，它把一个变量标识为一条线程独占的状态。</li>
-<li>unlock（解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定。</li>
-<li>read（读取）：作用于主内存的变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用。</li>
-<li>load（载入）：作用于工作内存的变量，它把read操作从主内存中得到的变量值放入工作内存的变量副本中。</li>
-<li>use（使用）：作用于工作内存的变量，它把工作内存中一个变量的值传递给执行引擎，每当虚拟机遇到一个需要使用变量的值的字节码指令时将会执行这个操作。</li>
-<li>assign（赋值）：作用于工作内存的变量，它把一个从执行引擎接收的值赋给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作。</li>
-<li>store（存储）：作用于工作内存的变量，它把工作内存中一个变量的值传送到主内存中，以便随后的write操作使用。</li>
-<li>write（写入）：作用于主内存的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中。<br>并且 read&amp;load 成对出现， store&amp;write成对出现，以及一些列规则来保证基本的读取和写入的原子性。</li>
-</ol>
-<h3 id="可见性："><a href="#可见性：" class="headerlink" title="可见性："></a>可见性：</h3><p>java中通过定义了 volatile 关键字，来保证变量新值能立即刷新到主内存中，以及每次使用都从主内存中刷新来保证。</p>
-<p>也通过 锁 synchronized 和 final 关键字 来实现。</p>
-<h3 id="有序性-1"><a href="#有序性-1" class="headerlink" title="有序性"></a>有序性</h3><p>java通过定义了happen-before原则来保证有序性。通过该原则我们数据是否存在竞争，线程是否安全。</p>
-<ol>
-<li><strong>程序次序原则</strong>：在一个线程内，按照控制流，书写在前面的要先于后面的</li>
-<li><strong>管程锁定原则</strong>：一个unlock操作先于后面对同一个锁的lock</li>
-<li><strong>volatile原则</strong>：对一个volatile变量的写先于后面对这个变量的读</li>
-<li><strong>线程启动原则</strong>：Thread的start()先于这个线程的所有操作</li>
-<li><strong>线程终止原则</strong>：线程中所有操作都先于线程终止操作   </li>
-<li><strong>线程终端原则</strong>：interrupt调用先于被中断代码检测到中断时间</li>
-<li><strong>对象终结原则</strong>：对象的初始化完成先于finalize（）的开始</li>
-<li><strong>传递性</strong>： a先于b  b先于c 则a先于c</li>
-</ol>
-<h1 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h1><p>本文首先了解了并发和并行的基本概念，然后分别通过系统内存模型，和java内存模型了解了系统内存已经java内存对于并发三大特性的处理。</p>
-<p>内存模型 通过总线锁 缓存锁 缓存一致性协议 内存屏障来保障并发的可靠性</p>
-<p>java内存模型通过 基础原子性操作  volatile 锁  happen-before原则来保证并发的可靠性</p>
-<br/>
-<br/>
-<br/>
-<br/>
+<p>通过源码可以看到 ReentrantLock内部维护了一个AbstractQueuedSynchronized的结构。而AbstractQueuedSynchronized结构我们在 <a href="/post/b6468daf.html" title="&lt;b&gt;Aqs源码解析&lt;&#x2F;b&gt;"><b>Aqs源码解析</b></a> 一文中已经说过了。</p>
+<p><img src="../resource/java/Aqs%E7%BB%93%E6%9E%84.jpg" alt=""></p>
+<p>sync的继承关系如下:</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">static <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">NonfairSync</span> <span class="keyword">extends</span> <span class="title">Sync</span> </span>&#123;</span><br><span class="line">&#125;</span><br><span class="line">static <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">FairSync</span> <span class="keyword">extends</span> <span class="title">Sync</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
 
+<p><img src="../resource/java/sync%E7%BB%A7%E6%89%BF.jpg" alt=""></p>
+<h2 id="主要方法"><a href="#主要方法" class="headerlink" title="主要方法"></a>主要方法</h2><h3 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h3><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ReentrantLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    sync = <span class="keyword">new</span> NonfairSync();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * Creates an instance of &#123;<span class="doctag">@code</span> ReentrantLock&#125; with the</span></span><br><span class="line"><span class="comment">    * given fairness policy.</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> fair &#123;<span class="doctag">@code</span> true&#125; if this lock should use a fair ordering policy</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ReentrantLock</span><span class="params">(<span class="keyword">boolean</span> fair)</span> </span>&#123;</span><br><span class="line">    sync = fair ? <span class="keyword">new</span> FairSync() : <span class="keyword">new</span> NonfairSync();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<blockquote>
-<p><a href="http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf" target="_blank" rel="noopener">http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf</a><br><a href="https://blog.51cto.com/14220760/2370118?source=dra" target="_blank" rel="noopener">https://blog.51cto.com/14220760/2370118?source=dra</a></p>
-</blockquote>
+<p>说明： 在创建ReetrantLock的时候可以选择是公平锁还是非公平锁。默认是非公平锁</p>
+<p>公平锁：线程获取锁的顺序和调用lock的顺序一样，FIFO；<br>非公平锁：线程获取锁的顺序和调用lock的顺序无关，全凭运气。</p>
+<h3 id="lock"><a href="#lock" class="headerlink" title="lock"></a>lock</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 锁</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">//调用 sync 进行锁定</span></span><br><span class="line">    sync.lock();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 非公平锁</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">NonfairSync</span> <span class="keyword">extends</span> <span class="title">Sync</span> </span>&#123;</span><br><span class="line">     </span><br><span class="line">    <span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 非公平锁优先尝试抢占 ，不成功在通过Aqs去排队</span></span><br><span class="line">        <span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, <span class="number">1</span>))</span><br><span class="line">            setExclusiveOwnerThread(Thread.currentThread());</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            acquire(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> nonfairTryAcquire(acquires);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 公平锁 直接进入Aqs排队</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">FairSync</span> <span class="keyword">extends</span> <span class="title">Sync</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        acquire(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// acquire会在Aqs中回调tryAcquire</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> Thread current = Thread.currentThread();</span><br><span class="line">        <span class="keyword">int</span> c = getState();</span><br><span class="line">        <span class="comment">// 如果当前状态为0 没有被占用</span></span><br><span class="line">        <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 没有其他线程等待资源 尝试直接抢占 优化队列时间</span></span><br><span class="line">            <span class="keyword">if</span> (!hasQueuedPredecessors() &amp;&amp;</span><br><span class="line">                compareAndSetState(<span class="number">0</span>, acquires)) &#123;</span><br><span class="line">                setExclusiveOwnerThread(current);</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 如果是当前线程占有资源</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (current == getExclusiveOwnerThread()) &#123;</span><br><span class="line">            <span class="comment">// 设置资源占用数</span></span><br><span class="line">            <span class="keyword">int</span> nextc = c + acquires;</span><br><span class="line">            <span class="keyword">if</span> (nextc &lt; <span class="number">0</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">            setState(nextc);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 非公平锁逻辑</span></span><br><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">nonfairTryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> Thread current = Thread.currentThread();</span><br><span class="line">    <span class="keyword">int</span> c = getState();</span><br><span class="line">    <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 直接抢占</span></span><br><span class="line">        <span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, acquires)) &#123;</span><br><span class="line">            setExclusiveOwnerThread(current);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (current == getExclusiveOwnerThread()) &#123;</span><br><span class="line">        <span class="comment">// 判断当前资源占用情况 当前锁此处表示 当前线程占用次数</span></span><br><span class="line">        <span class="keyword">int</span> nextc = c + acquires;</span><br><span class="line">        <span class="keyword">if</span> (nextc &lt; <span class="number">0</span>) <span class="comment">// overflow</span></span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">        setState(nextc);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>说明: </p>
+<ol>
+<li>lock的操作都是调用Aqs的acquire方法实现</li>
+<li>公平锁和非公平锁的实现仅在于非公平锁会优先尝试占有锁，然后在放入aqs队列，而公平锁是直接放入aqs队列</li>
+<li>在进行tryAcquire获取锁的时候，会先看看有没有冲突，其他线程有没有占用，如果没有，则优先尝试直接占用，此为优化项。</li>
+</ol>
+<h3 id="unlock"><a href="#unlock" class="headerlink" title="unlock"></a>unlock</h3><figure class="highlight arduino"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    sync.<span class="built_in">release</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 尝试释放</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryRelease</span><span class="params">(<span class="keyword">int</span> releases)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> c = getState() - releases;</span><br><span class="line">    <span class="comment">//不是当前线程占有 则报错</span></span><br><span class="line">    <span class="keyword">if</span> (Thread.currentThread() != getExclusiveOwnerThread())</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalMonitorStateException();</span><br><span class="line">    <span class="keyword">boolean</span> <span class="built_in">free</span> = <span class="literal">false</span>;</span><br><span class="line">    <span class="comment">// 看看当前资源是否已经无占用</span></span><br><span class="line">    <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">free</span> = <span class="literal">true</span>;</span><br><span class="line">        setExclusiveOwnerThread(null);</span><br><span class="line">    &#125;</span><br><span class="line">    setState(c);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">free</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>公平锁非公平锁的释放策略一直，主要依赖Aqs结构</li>
+</ol>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>ReentrantLock的源码相对比较简单，主要依赖了AbstractQueuedSynchronized的结构进行的的锁定和解锁操作。AbstractQueuedSynchronized的解析可以查看 <a href="/post/b6468daf.html" title="&lt;b&gt;Aqs源码解析&lt;&#x2F;b&gt;"><b>Aqs源码解析</b></a> 一文</p>
 
       
     </div>
@@ -575,6 +482,10 @@
           
             <a href="/tags/%E5%B9%B6%E5%8F%91/" rel="tag"># 并发</a>
           
+            <a href="/tags/JUC/" rel="tag"># JUC</a>
+          
+            <a href="/tags/%E9%94%81/" rel="tag"># 锁</a>
+          
         </div>
       
 
@@ -586,8 +497,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/post/ebfd7e71.html" rel="next" title="java并发综述">
-                <i class="fa fa-chevron-left"></i> java并发综述
+              <a href="/post/e62a890b.html" rel="next" title="LockSupport源码分析">
+                <i class="fa fa-chevron-left"></i> LockSupport源码分析
               </a>
             
           </div>
@@ -595,10 +506,6 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/post/31afbc55.html" rel="prev" title="java线程概念">
-                java线程概念 <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -749,7 +656,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#并发和并行"><span class="nav-number">1.</span> <span class="nav-text">并发和并行</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#三大特性："><span class="nav-number">2.</span> <span class="nav-text">三大特性：</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原子性"><span class="nav-number">2.1.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可见性"><span class="nav-number">2.2.</span> <span class="nav-text">可见性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#有序性"><span class="nav-number">2.3.</span> <span class="nav-text">有序性</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#内存模型"><span class="nav-number">3.</span> <span class="nav-text">内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#总线锁定"><span class="nav-number">3.1.</span> <span class="nav-text">总线锁定</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓存锁定和缓存一致性"><span class="nav-number">3.2.</span> <span class="nav-text">缓存锁定和缓存一致性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#缓存一致性-MESI"><span class="nav-number">3.2.1.</span> <span class="nav-text">缓存一致性 MESI</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#java-内存模型"><span class="nav-number">3.3.</span> <span class="nav-text">java 内存模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#原子性-1"><span class="nav-number">3.3.1.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#可见性："><span class="nav-number">3.3.2.</span> <span class="nav-text">可见性：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#有序性-1"><span class="nav-number">3.3.3.</span> <span class="nav-text">有序性</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结："><span class="nav-number">4.</span> <span class="nav-text">总结：</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言："><span class="nav-number">1.</span> <span class="nav-text">前言：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用示例"><span class="nav-number">2.</span> <span class="nav-text">使用示例:</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码分析"><span class="nav-number">3.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据结构是一切的基础"><span class="nav-number">3.1.</span> <span class="nav-text">数据结构是一切的基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主要方法"><span class="nav-number">3.2.</span> <span class="nav-text">主要方法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#构造函数"><span class="nav-number">3.2.1.</span> <span class="nav-text">构造函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lock"><span class="nav-number">3.2.2.</span> <span class="nav-text">lock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#unlock"><span class="nav-number">3.2.3.</span> <span class="nav-text">unlock</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
             
 
           </div>
