@@ -498,6 +498,16 @@
 <li>当前线程要进行写操作的时候，如果检测到有其他线程正在进行扩容，则积极加入到扩容大军中，帮助推进扩容的处理。</li>
 <li>扩容的时候，是将table分成了n个桶 默认是 一个桶包含了16个单元index。 每个线程去申请一个桶的操作权限，申请完成后，循环处理这个桶中的所有节点，对所有节点进行节点迁移处理。处理过的节点设置为hash=MODED。</li>
 </ol>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+<h1 id="参考和引申"><a href="#参考和引申" class="headerlink" title="参考和引申"></a>参考和引申</h1><blockquote>
+<p><a href="https://www.cnblogs.com/leesf456/p/5453341.html" target="_blank" rel="noopener">https://www.cnblogs.com/leesf456/p/5453341.html</a><br><a href="https://www.jianshu.com/p/2829fe36a8dd" target="_blank" rel="noopener">https://www.jianshu.com/p/2829fe36a8dd</a></p>
+</blockquote>
 
       
     </div>
@@ -717,7 +727,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码分析"><span class="nav-number">2.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据结构是一切的基础"><span class="nav-number">2.1.</span> <span class="nav-text">数据结构是一切的基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基础属性"><span class="nav-number">2.2.</span> <span class="nav-text">基础属性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#核心函数"><span class="nav-number">2.3.</span> <span class="nav-text">核心函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#put"><span class="nav-number">2.3.1.</span> <span class="nav-text">put</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#initTable-初始化数组"><span class="nav-number">2.3.2.</span> <span class="nav-text">initTable 初始化数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#helpTransfer"><span class="nav-number">2.3.3.</span> <span class="nav-text">helpTransfer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#transfer"><span class="nav-number">2.3.4.</span> <span class="nav-text">transfer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#addCount"><span class="nav-number">2.3.5.</span> <span class="nav-text">addCount</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">2.3.6.</span> <span class="nav-text">get</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结："><span class="nav-number">3.</span> <span class="nav-text">总结：</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码分析"><span class="nav-number">2.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据结构是一切的基础"><span class="nav-number">2.1.</span> <span class="nav-text">数据结构是一切的基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基础属性"><span class="nav-number">2.2.</span> <span class="nav-text">基础属性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#核心函数"><span class="nav-number">2.3.</span> <span class="nav-text">核心函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#put"><span class="nav-number">2.3.1.</span> <span class="nav-text">put</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#initTable-初始化数组"><span class="nav-number">2.3.2.</span> <span class="nav-text">initTable 初始化数组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#helpTransfer"><span class="nav-number">2.3.3.</span> <span class="nav-text">helpTransfer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#transfer"><span class="nav-number">2.3.4.</span> <span class="nav-text">transfer</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#addCount"><span class="nav-number">2.3.5.</span> <span class="nav-text">addCount</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">2.3.6.</span> <span class="nav-text">get</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结："><span class="nav-number">3.</span> <span class="nav-text">总结：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考和引申"><span class="nav-number">4.</span> <span class="nav-text">参考和引申</span></a></li></ol></div>
             
 
           </div>

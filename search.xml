@@ -91,6 +91,16 @@
 <li>当前线程要进行写操作的时候，如果检测到有其他线程正在进行扩容，则积极加入到扩容大军中，帮助推进扩容的处理。</li>
 <li>扩容的时候，是将table分成了n个桶 默认是 一个桶包含了16个单元index。 每个线程去申请一个桶的操作权限，申请完成后，循环处理这个桶中的所有节点，对所有节点进行节点迁移处理。处理过的节点设置为hash=MODED。</li>
 </ol>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+<h1 id="参考和引申"><a href="#参考和引申" class="headerlink" title="参考和引申"></a>参考和引申</h1><blockquote>
+<p><a href="https://www.cnblogs.com/leesf456/p/5453341.html" target="_blank" rel="noopener">https://www.cnblogs.com/leesf456/p/5453341.html</a><br><a href="https://www.jianshu.com/p/2829fe36a8dd" target="_blank" rel="noopener">https://www.jianshu.com/p/2829fe36a8dd</a></p>
+</blockquote>
 ]]></content>
       <categories>
         <category>java</category>
