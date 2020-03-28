@@ -488,6 +488,22 @@
       </tags>
   </entry>
   <entry>
+    <title>ConcurrentHashMap源码解析</title>
+    <url>/post/54dc35c3.html</url>
+    <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>HashMap是最常用的集合类，也是面试中经常被问到的类，HashMap延伸出来的 线程安全的HashMap，ConcurrentHashMap无疑也是极其重要的，ConccurrentHashMap内部数据结构，实现原理等等也无疑是必须要掌握的。</p>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><h2 id="数据结构是"><a href="#数据结构是" class="headerlink" title="数据结构是"></a>数据结构是</h2>]]></content>
+      <categories>
+        <category>java</category>
+        <category>java并发</category>
+      </categories>
+      <tags>
+        <tag>java</tag>
+        <tag>并发</tag>
+        <tag>JUC</tag>
+        <tag>线程安全集合</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>volatile详解</title>
     <url>/post/f3607baf.html</url>
     <content><![CDATA[<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>volatile关键字可以说是java虚拟机提供的一种最轻量级的同步机制，但是volatile的语义又经常被错误的理解，导致出现预期外的错误，也因此volatile也经常是面试必问的问题，了解volatile变量的语义就显得非常重要。</p>
