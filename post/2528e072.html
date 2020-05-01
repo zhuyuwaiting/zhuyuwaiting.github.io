@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+<meta name="baidu-site-verification" content="Tiha5CpyNY" />
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="java,集合,LinkedList," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="如果说ArrayList是java集合中作为线性顺序存储结构的代表，那么LinkedList便是java集合中作为线性链式存储结构中的代表类。那么接下来我们就来探讨LinkedList的实现：  &amp;emsp; 1. LinkedList的基础数据结构是什么样的？    &amp;emsp; 2. LinkedList基础操作函数    &amp;emsp; 3. LinkedList额外特性">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LinedList源码分析">
+<meta property="og:url" content="http://zhuyuwaiting.github.io/post/2528e072.html">
+<meta property="og:site_name" content="luke&#39;s blog">
+<meta property="og:description" content="如果说ArrayList是java集合中作为线性顺序存储结构的代表，那么LinkedList便是java集合中作为线性链式存储结构中的代表类。那么接下来我们就来探讨LinkedList的实现：  &amp;emsp; 1. LinkedList的基础数据结构是什么样的？    &amp;emsp; 2. LinkedList基础操作函数    &amp;emsp; 3. LinkedList额外特性">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/LinkedList%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.jpg">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/linkFirst.jpg">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/unlinkFirst.jpg">
+<meta property="article:published_time" content="2020-03-06T12:46:21.000Z">
+<meta property="article:modified_time" content="2020-03-06T12:46:21.000Z">
+<meta property="article:author" content="luke">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="集合">
+<meta property="article:tag" content="LinkedList">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://zhuyuwaiting.github.io/resource/java/LinkedList%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://zhuyuwaiting.github.io/post/2528e072.html"/>
+
+
+
+
+
+  <title>LinedList源码分析 | luke's blog</title>
+  
+
+
+
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?34d3675430d5ead5369e69830321b350";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">luke's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <h1 class="site-subtitle" itemprop="description"></h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://zhuyuwaiting.github.io/post/2528e072.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="luke">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="luke's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h2 class="post-title" itemprop="name headline">LinedList源码分析</h2>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-03-06T20:46:21+08:00">
+                2020-03-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/" itemprop="url" rel="index">
+                    <span itemprop="name">java</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/java%E9%9B%86%E5%90%88/" itemprop="url" rel="index">
+                    <span itemprop="name">java集合</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv">本文总阅读量
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>次
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h1><p>如果说ArrayList是随机访问的典型结构，那LinkedList就是典型的顺序访问结构。</p>
+<p>在ArrayList的源码分析中我们提到，ArrayList的出现是为了弥补数组大小需要自我管理，避免数组越界等问题，提供了自动扩容的特性，以及数组插入元素删除元素的元素移动管理等等。</p>
+<p>那么LinkedList相比于ArrayList又具有哪些优点或者缺点呢？让我们先看看LinkedList的数据结构在来回答这个问题。 </p>
+<h1 id="LinkedList源码解析"><a href="#LinkedList源码解析" class="headerlink" title="LinkedList源码解析"></a>LinkedList源码解析</h1><h2 id="数据结构是一切的基础"><a href="#数据结构是一切的基础" class="headerlink" title="数据结构是一切的基础"></a>数据结构是一切的基础</h2><details>
+
+<summary>view code</summary>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">//首节点</span><br><span class="line">transient <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; first;</span><br><span class="line">//尾节点</span><br><span class="line">transient <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; last;</span><br><span class="line"></span><br><span class="line">private static class <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; &#123;</span><br><span class="line">   //元素值</span><br><span class="line">    E item; </span><br><span class="line">    //下一个节点</span><br><span class="line">    <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; next;</span><br><span class="line">    //前一个节点</span><br><span class="line">    <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; prev;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">Node</span><span class="title">(Node</span><span class="tag">&lt;E&gt;</span> prev, E element, <span class="keyword">Node</span><span class="title">&lt;E</span>&gt; next) &#123;</span><br><span class="line">        this.item = element;</span><br><span class="line">        this.next = next;</span><br><span class="line">        this.prev = prev;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</details>
+
+
+<p>通过上述源码可以发现，LinkedList内部的结构就如同下图所示的双向链表</p>
+<p><img src="../resource/java/LinkedList%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.jpg" alt=""></p>
+<p>如果所示，在LinkedList的内部维护了一个双向列表，并且分别使用first和last指针指向了双向链表的头部和尾部，如此，便可以从头开始，或者从尾部开始进行查找。 </p>
+<p><strong><em>LinkedList的优缺点:</em></strong></p>
+<p>既然linkedList是以链表为基础结构的，那边链表的优缺点LinkedList也基本具备。<br>优点： </p>
+<ol>
+<li>插入删除操作仅仅需要修改对应指针，不在需要移动元素操作。 </li>
+<li>大小可无限扩展和缩减，无需进行扩容的相关操作。</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>无法进行随机访问，需要访问某个位置的节点，只能从头开始遍历。</li>
+</ol>
+<p>链表的基础操作其实相当麻烦，需要插入一个元素的时候，需要修改前一个节点指针后一个节点指针，那么LinkedList作为链表的封装，又提供了哪些基础函数可以使用呢？</p>
+<h2 id="LinkedList重要函数"><a href="#LinkedList重要函数" class="headerlink" title="LinkedList重要函数"></a>LinkedList重要函数</h2><h3 id="link-amp-amp-unLink-方法"><a href="#link-amp-amp-unLink-方法" class="headerlink" title="link* &amp;&amp; unLink* 方法"></a>link* &amp;&amp; unLink* 方法</h3><h4 id="linkFirst-amp-amp-unlinkFirst"><a href="#linkFirst-amp-amp-unlinkFirst" class="headerlink" title="linkFirst &amp;&amp; unlinkFirst"></a>linkFirst &amp;&amp; unlinkFirst</h4><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//设置e为第一个元素</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> linkFirst(E e) &#123;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; f = first;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; newNode = <span class="keyword">new</span> Node&lt;&gt;(<span class="keyword">null</span>, e, f);</span><br><span class="line">    <span class="comment">//设置首个节点为e</span></span><br><span class="line">    first = newNode;</span><br><span class="line">    <span class="comment">//之前的首节点为null，表示改链表之前未null</span></span><br><span class="line">    <span class="keyword">if</span> (f == <span class="keyword">null</span>)</span><br><span class="line">        <span class="comment">//设置last节点也为e</span></span><br><span class="line">        last = newNode;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="comment">//否者设置之前的节点的前驱为e</span></span><br><span class="line">        f.prev = newNode;</span><br><span class="line">    <span class="keyword">size</span>++;</span><br><span class="line">    modCount++;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//删除指定节点前的所有节点</span></span><br><span class="line"><span class="keyword">private</span> E unlinkFirst(Node&lt;E&gt; f) &#123;</span><br><span class="line">    <span class="comment">// assert f == first &amp;&amp; f != null;</span></span><br><span class="line">    <span class="keyword">final</span> E element = f.item;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; <span class="keyword">next</span> = f.<span class="keyword">next</span>;</span><br><span class="line">    f.item = <span class="keyword">null</span>;</span><br><span class="line">    f.<span class="keyword">next</span> = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">    <span class="comment">//指定节点后的节点设置为首节点</span></span><br><span class="line">    first = <span class="keyword">next</span>;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">next</span> == <span class="keyword">null</span>)</span><br><span class="line">        last = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">       <span class="comment">//指定节点后的节点前驱节点设置为null</span></span><br><span class="line">        <span class="keyword">next</span>.prev = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">size</span>--;</span><br><span class="line">    modCount++;</span><br><span class="line">    <span class="keyword">return</span> element;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p><strong>说明：</strong><br>上面两个函数，为其他函数例如 addFirst等函数提供了基础操作，主要作用是链表头部插入元素，和链表头部删除元素。</p>
+<p>linkFirst:</p>
+<p><img src="../resource/java/linkFirst.jpg" alt=""></p>
+<p>unlinkFirst:<br><img src="../resource/java/unlinkFirst.jpg" alt=""></p>
+<h4 id="剩余link-amp-amp-unlink-函数"><a href="#剩余link-amp-amp-unlink-函数" class="headerlink" title="剩余link* &amp;&amp; unlink* 函数"></a>剩余link* &amp;&amp; unlink* 函数</h4><details>
+<summary>view code</summary>
+
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//设置e为尾节点，为add提供服务</span></span><br><span class="line"><span class="keyword">void</span> linkLast(E e) &#123;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; l = last;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; newNode = <span class="keyword">new</span> Node&lt;&gt;(l, e, <span class="keyword">null</span>);</span><br><span class="line">    last = newNode;</span><br><span class="line">    <span class="keyword">if</span> (l == <span class="keyword">null</span>)</span><br><span class="line">        first = newNode;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        l.<span class="keyword">next</span> = newNode;</span><br><span class="line">    <span class="keyword">size</span>++;</span><br><span class="line">    modCount++;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//在特定节点前插入节点</span></span><br><span class="line"><span class="keyword">void</span> linkBefore(E e, Node&lt;E&gt; succ) &#123;</span><br><span class="line">    <span class="comment">// assert succ != null;</span></span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; pred = succ.prev;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; newNode = <span class="keyword">new</span> Node&lt;&gt;(pred, e, succ);</span><br><span class="line">    succ.prev = newNode;</span><br><span class="line">    <span class="keyword">if</span> (pred == <span class="keyword">null</span>)</span><br><span class="line">        first = newNode;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        pred.<span class="keyword">next</span> = newNode;</span><br><span class="line">    <span class="keyword">size</span>++;</span><br><span class="line">    modCount++;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//删除节点后所有节点 用于删除尾节点等</span></span><br><span class="line"><span class="keyword">private</span> E unlinkLast(Node&lt;E&gt; l) &#123;</span><br><span class="line">    <span class="comment">// assert l == last &amp;&amp; l != null;</span></span><br><span class="line">    <span class="keyword">final</span> E element = l.item;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; prev = l.prev;</span><br><span class="line">    l.item = <span class="keyword">null</span>;</span><br><span class="line">    l.prev = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">    last = prev;</span><br><span class="line">    <span class="keyword">if</span> (prev == <span class="keyword">null</span>)</span><br><span class="line">        first = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        prev.<span class="keyword">next</span> = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">size</span>--;</span><br><span class="line">    modCount++;</span><br><span class="line">    <span class="keyword">return</span> element;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 删除特定节点</span></span><br><span class="line">E unlink(Node&lt;E&gt; x) &#123;</span><br><span class="line">    <span class="comment">// assert x != null;</span></span><br><span class="line">    <span class="keyword">final</span> E element = x.item;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; <span class="keyword">next</span> = x.<span class="keyword">next</span>;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; prev = x.prev;</span><br><span class="line">    <span class="keyword">if</span> (prev == <span class="keyword">null</span>) &#123;</span><br><span class="line">        first = <span class="keyword">next</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        prev.<span class="keyword">next</span> = <span class="keyword">next</span>;</span><br><span class="line">        x.prev = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">next</span> == <span class="keyword">null</span>) &#123;</span><br><span class="line">        last = prev;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">next</span>.prev = prev;</span><br><span class="line">        x.<span class="keyword">next</span> = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    x.item = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">size</span>--;</span><br><span class="line">    modCount++;</span><br><span class="line">    <span class="keyword">return</span> element;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</details>
+
+
+<p><strong>说明：</strong><br>上述所有的link，unlink操作，包含了对于一个链表的最基本插入节点和删除节点操作，提供了对于首、尾、特定节点的插入删除操作的封装，以共用并且简化其他api的复杂度。</p>
+<h3 id="node"><a href="#node" class="headerlink" title="node"></a>node</h3><figure class="highlight sas"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Node&lt;E&gt; node(int <span class="meta">index</span>) &#123;</span><br><span class="line">  //优化方案，如果<span class="meta">index</span>在前半部分从前开始搜索，否则从尾节点开始搜索，属于空间换时间的思路</span><br><span class="line">  <span class="meta">if</span> (<span class="meta">index</span> &lt; (size &gt;&gt; 1)) &#123;</span><br><span class="line">      Node&lt;E&gt; <span class="meta">x</span> = first;</span><br><span class="line">      for (int i = 0; i &lt; <span class="meta">index</span>; i++)</span><br><span class="line">          <span class="meta">x</span> = <span class="meta">x</span>.next;</span><br><span class="line">      <span class="meta">return</span> <span class="meta">x</span>;</span><br><span class="line">  &#125; <span class="meta">else</span> &#123;</span><br><span class="line">    //从尾节点开始搜索</span><br><span class="line">      Node&lt;E&gt; <span class="meta">x</span> = last;</span><br><span class="line">      for (int i = size - 1; i &gt; <span class="meta">index</span>; i--)</span><br><span class="line">          <span class="meta">x</span> = <span class="meta">x</span>.prev;</span><br><span class="line">      <span class="meta">return</span> <span class="meta">x</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明：</strong><br>node函数，提供了一个搜索特定位置节点的方法，该方法为add(1,e)提供了基础，插入特定位置某个特定元素提供了基础方法</p>
+<h3 id="add"><a href="#add" class="headerlink" title="add"></a>add</h3><figure class="highlight reasonml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public boolean add(E e) &#123;</span><br><span class="line">  link<span class="constructor">Last(<span class="params">e</span>)</span>;</span><br><span class="line">  return <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br><span class="line">public void add<span class="constructor">First(E <span class="params">e</span>)</span> &#123;</span><br><span class="line">  link<span class="constructor">First(<span class="params">e</span>)</span>;</span><br><span class="line">&#125;</span><br><span class="line">public void add<span class="constructor">Last(E <span class="params">e</span>)</span> &#123;</span><br><span class="line">  link<span class="constructor">Last(<span class="params">e</span>)</span>;</span><br><span class="line">&#125;</span><br><span class="line">public void add(<span class="built_in">int</span> index, E element) &#123;</span><br><span class="line">  <span class="keyword">if</span> (index<span class="operator"> == </span>size)</span><br><span class="line">      link<span class="constructor">Last(<span class="params">element</span>)</span>;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">      link<span class="constructor">Before(<span class="params">element</span>, <span class="params">node</span>(<span class="params">index</span>)</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>说明：</strong> link* 函数上述已经描述过了，add函数均是调用link*还是来实现插入元素的操作。</p>
+<h3 id="addAll"><a href="#addAll" class="headerlink" title="addAll()"></a>addAll()</h3><details>
+<summary>view code</summary>
+
+<figure class="highlight dart"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"><span class="markdown">/**</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>Inserts all of </span>the<span class="markdown"> elements in </span>the<span class="markdown"> specified collection into this</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>list, starting at </span>the<span class="markdown"> specified position.  Shifts </span>the<span class="markdown"> element</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>currently at that position (if any) and any subsequent elements to</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span></span>the<span class="markdown"> right (increases their indices).  The new elements </span>will<span class="markdown"> appear</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>in </span>the<span class="markdown"> list in </span>the<span class="markdown"> order that </span>they<span class="markdown"> </span>are<span class="markdown"> returned by </span>the</span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>specified collection's iterator.</span></span></span><br><span class="line"><span class="comment"><span class="markdown">*</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>@param index index at which to insert </span>the<span class="markdown"> first element</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">*              </span>from </span>the<span class="markdown"> specified collection</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>@param c collection containing elements to be added to this list</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>@return &#123;@code true&#125; if this list changed as </span>a<span class="markdown"> result of </span>the<span class="markdown"> call</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>@throws IndexOutOfBoundsException &#123;@inheritDoc&#125;</span></span></span><br><span class="line"><span class="comment"><span class="markdown"><span class="bullet">* </span>@throws NullPointerException if </span>the<span class="markdown"> specified collection is null</span></span></span><br><span class="line"><span class="comment"><span class="markdown">*/</span></span></span><br><span class="line">public boolean addAll(<span class="built_in">int</span> index, Collection&lt;? <span class="keyword">extends</span> E&gt; c) &#123;</span><br><span class="line">    checkPositionIndex(index);</span><br><span class="line">    <span class="comment">//将集合转化为数组</span></span><br><span class="line">    <span class="built_in">Object</span>[] a = c.toArray();</span><br><span class="line">    <span class="built_in">int</span> numNew = a.length;</span><br><span class="line">    <span class="keyword">if</span> (numNew == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    <span class="comment">// 找到index的节点</span></span><br><span class="line">    Node&lt;E&gt; pred, succ;</span><br><span class="line">    <span class="keyword">if</span> (index == size) &#123;</span><br><span class="line">        succ = <span class="keyword">null</span>;</span><br><span class="line">        pred = last;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        succ = node(index);</span><br><span class="line">        pred = succ.prev;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//遍历数组 将集合插入到index节点后面</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="built_in">Object</span> o : a) &#123;</span><br><span class="line">        <span class="meta">@SuppressWarnings</span>(<span class="string">"unchecked"</span>) E e = (E) o;</span><br><span class="line">        Node&lt;E&gt; newNode = <span class="keyword">new</span> Node&lt;&gt;(pred, e, <span class="keyword">null</span>);</span><br><span class="line">        <span class="keyword">if</span> (pred == <span class="keyword">null</span>)</span><br><span class="line">            first = newNode;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            pred.next = newNode;</span><br><span class="line">        pred = newNode;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//设置尾节点 或者后面的节点</span></span><br><span class="line">    <span class="keyword">if</span> (succ == <span class="keyword">null</span>) &#123;</span><br><span class="line">        last = pred;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        pred.next = succ;</span><br><span class="line">        succ.prev = pred;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    size += numNew;</span><br><span class="line">    modCount++;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+</details>
+
+<p><strong>说明：</strong> </p>
+<p>addAll()函数中，有一个很有意思的点，就是 <strong>Object[] a = c.toArray();</strong> 为什么插入集合元素的时候需要先把集合转化为数组呢？</p>
+<p>查看addAll的注释解释，发现也并没有说明这个事情，那么我们去看下toArray()方法是否会有这个解释呢？</p>
+<figure class="highlight smali"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">  * Returns an<span class="built_in"> array </span>containing all of the elements in this collection.</span><br><span class="line">  * If this collection makes any guarantees as to what order its elements</span><br><span class="line">  * are returned by its iterator, this method must<span class="built_in"> return </span>the elements in</span><br><span class="line">  * the same order.</span><br><span class="line">  *</span><br><span class="line">  * &lt;p&gt;The returned<span class="built_in"> array </span>will be <span class="string">"safe"</span> in that no references to it are</span><br><span class="line">  * maintained by this collection.  (In other words, this method must</span><br><span class="line">  * allocate a<span class="built_in"> new </span>array even<span class="built_in"> if </span>this collection is backed by an array).</span><br><span class="line">  * The caller is thus free to modify the returned array.</span><br><span class="line">  *</span><br><span class="line">  * &lt;p&gt;This method acts as<span class="keyword"> bridge</span> between<span class="built_in"> array-based </span>and collection-based</span><br><span class="line">  * APIs.</span><br><span class="line">  *</span><br><span class="line">  * @return an<span class="built_in"> array </span>containing all of the elements in this collection</span><br><span class="line">  */</span><br><span class="line">Object[] toArray();</span><br></pre></td></tr></table></figure>
+
+<p>根据注释的解释我们可以发现：</p>
+<p><strong><em>Collection.toArray()方法的定义上，是提供一个安全的方法，是的获取到的数组可以被自由的修改或者是删除元素,而不会影响到原本的集合</em></strong></p>
+<p><strong><em>注意：对于Collection.toArray()进行实现的时候，请务必遵循改原则</em></strong></p>
+<p>那么我们在来看一下LinkedList的toArray()方法:</p>
+<figure class="highlight processing"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">Object</span>[] toArray() &#123;</span><br><span class="line">  <span class="keyword">Object</span>[] result = <span class="keyword">new</span> <span class="keyword">Object</span>[<span class="built_in">size</span>];</span><br><span class="line">  <span class="built_in">int</span> i = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (Node&lt;E&gt; x = first; x != <span class="keyword">null</span>; x = x.next)</span><br><span class="line">      result[i++] = x.item;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>同样的我们发现一个事情，就是如果你对这个数组进行了增加删除修改，是不会反应到集合的。但是这个safe是不会包含对象的safe，也就是 <strong><em>集合的对象和数组的对象还是一个对象 如果我们修改了数组中对象的属性，那么原集合中也会有体现</em></strong></p>
+<h3 id="remove"><a href="#remove" class="headerlink" title="remove"></a>remove</h3><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="function">E <span class="title">removeFirst</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">final</span> Node&lt;E&gt; f = first;</span><br><span class="line">  <span class="keyword">if</span> (f == <span class="keyword">null</span>)</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">  <span class="function"><span class="keyword">return</span> <span class="title">unlinkFirst</span><span class="params">(f)</span></span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">public</span> <span class="function">E <span class="title">removeLast</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">final</span> Node&lt;E&gt; l = last;</span><br><span class="line">  <span class="keyword">if</span> (l == <span class="keyword">null</span>)</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">  <span class="function"><span class="keyword">return</span> <span class="title">unlinkLast</span><span class="params">(l)</span></span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">public</span> <span class="function">E <span class="title">remove</span><span class="params">(<span class="keyword">int</span> index)</span> </span>&#123;</span><br><span class="line">  checkElementIndex(index);</span><br><span class="line">  <span class="keyword">return</span> unlink(node(index));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>说明：</strong> 与add类似，remove也是基于link* 函数和node函数进行的封装。<br>并且从上述操作中我们可以发现，删除一个特定位置的节点，对于LinkedList来说时间复杂度为O(n).</p>
+<h3 id="get"><a href="#get" class="headerlink" title="get"></a>get</h3><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">public</span> E <span class="keyword">get</span>(<span class="type">int</span> <span class="keyword">index</span>) &#123;</span><br><span class="line">  checkElementIndex(<span class="keyword">index</span>);</span><br><span class="line">  <span class="keyword">return</span> node(<span class="keyword">index</span>).item;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h3><p>通过上面的增加，删除，查询，我们可以发现对于LinkedList或者说对于链表来说，基础操作都是基于link*  unlink*  node()函数进行的，也就是节点前后添加元素，节点前后删除元素的指针操作，以及查找指定位置元素这个三个基本操作进行的。</p>
+<h1 id="额外特性，题外话"><a href="#额外特性，题外话" class="headerlink" title="额外特性，题外话"></a>额外特性，题外话</h1><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="function">E <span class="title">poll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> Node&lt;E&gt; f = first;</span><br><span class="line">    <span class="keyword">return</span> (f == <span class="keyword">null</span>) ? <span class="keyword">null</span> : unlinkFirst(f);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">push</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">    addFirst(e);</span><br><span class="line">&#125;</span><br><span class="line">  <span class="keyword">public</span> <span class="function">E <span class="title">pop</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">return</span> <span class="title">removeFirst</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>说明：</strong></p>
+<p>由于LinkedList采用的双链表的实现方式，add 和 remove 头尾节点非常的方便，并且耗时为O(1)，时间复杂度极低，故而LinkedList同样还可以作为栈或者队列来使用， pop push 操作构成了先进后出的栈结构， poll add 变成了先进先出的队列结构。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 100px auto 0px auto; width: 90%; text-align: center;">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.jpg" alt="luke 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/java/" rel="tag"># java</a>
+          
+            <a href="/tags/%E9%9B%86%E5%90%88/" rel="tag"># 集合</a>
+          
+            <a href="/tags/LinkedList/" rel="tag"># LinkedList</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/post/3fb8877a.html" rel="next" title="ArrayList源码分析">
+                <i class="fa fa-chevron-left"></i> ArrayList源码分析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/post/9749aebd.html" rel="prev" title="HashMap源码分析">
+                HashMap源码分析 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC80ODg4NS8yNTM3OQ"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.jpg"
+                alt="luke" />
+            
+              <p class="site-author-name" itemprop="name">luke</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives">
+              
+                  <span class="site-state-item-count">29</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/zhuyuwaiting" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言："><span class="nav-number">1.</span> <span class="nav-text">前言：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#LinkedList源码解析"><span class="nav-number">2.</span> <span class="nav-text">LinkedList源码解析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据结构是一切的基础"><span class="nav-number">2.1.</span> <span class="nav-text">数据结构是一切的基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LinkedList重要函数"><span class="nav-number">2.2.</span> <span class="nav-text">LinkedList重要函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#link-amp-amp-unLink-方法"><span class="nav-number">2.2.1.</span> <span class="nav-text">link* &amp;&amp; unLink* 方法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#linkFirst-amp-amp-unlinkFirst"><span class="nav-number">2.2.1.1.</span> <span class="nav-text">linkFirst &amp;&amp; unlinkFirst</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#剩余link-amp-amp-unlink-函数"><span class="nav-number">2.2.1.2.</span> <span class="nav-text">剩余link* &amp;&amp; unlink* 函数</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#node"><span class="nav-number">2.2.2.</span> <span class="nav-text">node</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#add"><span class="nav-number">2.2.3.</span> <span class="nav-text">add</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#addAll"><span class="nav-number">2.2.4.</span> <span class="nav-text">addAll()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#remove"><span class="nav-number">2.2.5.</span> <span class="nav-text">remove</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get"><span class="nav-number">2.2.6.</span> <span class="nav-text">get</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结："><span class="nav-number">2.2.7.</span> <span class="nav-text">总结：</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#额外特性，题外话"><span class="nav-number">3.</span> <span class="nav-text">额外特性，题外话</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+      
+      <script type="text/javascript" charset="utf-8" src="/js/tagcloud.js"></script>
+      <script type="text/javascript" charset="utf-8" src="/js/tagcanvas.js"></script>
+      <div class="widget-wrap">
+          <div id="myCanvasContainer" class="widget tagcloud">
+              <canvas width="250" height="250" id="resCanvas" style="width:100%">
+                  <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/ArrayList/" rel="tag">ArrayList</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HashMap/" rel="tag">HashMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HashSet/" rel="tag">HashSet</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">16</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/LinkedHashMap/" rel="tag">LinkedHashMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/LinkedList/" rel="tag">LinkedList</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Thread/" rel="tag">Thread</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TreeMap/" rel="tag">TreeMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a><span class="tag-list-count">28</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ppt/" rel="tag">ppt</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/volatile/" rel="tag">volatile</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B9%B6%E5%8F%91/" rel="tag">并发</a><span class="tag-list-count">21</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%94%B6%E8%97%8F/" rel="tag">收藏</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%94%B6%E8%97%8F%E5%A4%B9/" rel="tag">收藏夹</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B/" rel="tag">线程</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E9%9B%86%E5%90%88/" rel="tag">线程安全集合</a><span class="tag-list-count">5</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%B5%84%E6%BA%90/" rel="tag">资源</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%94%81/" rel="tag">锁</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%9B%86%E5%90%88/" rel="tag">集合</a><span class="tag-list-count">7</span></li></ul>
+              </canvas>
+          </div>
+      </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">luke</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      本站访客数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      人次
+    </span>
+  
+
+  
+    <span class="site-pv">
+      本站总访问量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';        
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

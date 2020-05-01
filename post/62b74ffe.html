@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+<meta name="baidu-site-verification" content="Tiha5CpyNY" />
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="java,并发,JUC,锁," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="前面我们分析了ReentrantLock,ReentrantLock提供了可重入锁的能力，并且有公平锁和非公平锁两种。但是ReentrantLock只提供了一种占用锁，而ReentrantReadWriteLock提供了读写锁分离的实现。本文就来看看读写锁的应用和实现。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ReentrantReadWriteLock源码分析">
+<meta property="og:url" content="http://zhuyuwaiting.github.io/post/62b74ffe.html">
+<meta property="og:site_name" content="luke&#39;s blog">
+<meta property="og:description" content="前面我们分析了ReentrantLock,ReentrantLock提供了可重入锁的能力，并且有公平锁和非公平锁两种。但是ReentrantLock只提供了一种占用锁，而ReentrantReadWriteLock提供了读写锁分离的实现。本文就来看看读写锁的应用和实现。">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/Aqs%E7%BB%93%E6%9E%84.jpg">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/sync%E7%BB%A7%E6%89%BF.jpg">
+<meta property="og:image" content="http://zhuyuwaiting.github.io/resource/java/%E8%AF%BB%E5%86%99%E9%94%81%E6%95%B0%E9%87%8F.jpg">
+<meta property="article:published_time" content="2020-03-24T15:25:21.000Z">
+<meta property="article:modified_time" content="2020-03-24T15:25:21.000Z">
+<meta property="article:author" content="luke">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="并发">
+<meta property="article:tag" content="JUC">
+<meta property="article:tag" content="锁">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://zhuyuwaiting.github.io/resource/java/Aqs%E7%BB%93%E6%9E%84.jpg">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://zhuyuwaiting.github.io/post/62b74ffe.html"/>
+
+
+
+
+
+  <title>ReentrantReadWriteLock源码分析 | luke's blog</title>
+  
+
+
+
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?34d3675430d5ead5369e69830321b350";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">luke's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <h1 class="site-subtitle" itemprop="description"></h1>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off"
+             placeholder="搜索..." spellcheck="false"
+             type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://zhuyuwaiting.github.io/post/62b74ffe.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="luke">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="luke's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h2 class="post-title" itemprop="name headline">ReentrantReadWriteLock源码分析</h2>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-03-24T23:25:21+08:00">
+                2020-03-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/" itemprop="url" rel="index">
+                    <span itemprop="name">java</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/java/java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index">
+                    <span itemprop="name">java并发</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="page-pv">本文总阅读量
+            <span class="busuanzi-value" id="busuanzi_value_page_pv" ></span>次
+            </span>
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言："><a href="#前言：" class="headerlink" title="前言："></a>前言：</h1><p>ReentrantLock提供了独占锁的实现，但是现实场景很多都是属于读多写少的场景，这种场景如果是使用独占锁就会很消耗读的性能，在没有写操作的时候，多个线程同时读同一个数据的时候是没有问题的。</p>
+<p>ReentrantReadWriteLock 就是通过提供读写锁的方式来满足这个场景。</p>
+<p>其有两个锁</p>
+<ol>
+<li>readlock   共享锁</li>
+<li>writeLock  独占锁</li>
+</ol>
+<p>线程可拥有读锁的条件：无线程占用写锁，或者本线程占用写锁。</p>
+<p>可拥有写锁的条件： 无其他线程读锁， 无其他线程写锁</p>
+<h1 id="使用示例"><a href="#使用示例" class="headerlink" title="使用示例"></a>使用示例</h1><figure class="highlight cs"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title">CachedData</span> &#123;</span><br><span class="line">    Object data;</span><br><span class="line">    <span class="keyword">volatile</span> boolean cacheValid;</span><br><span class="line">    final ReentrantReadWriteLock rwl = <span class="keyword">new</span> ReentrantReadWriteLock();</span><br><span class="line"> </span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">processCachedData</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">      rwl.readLock().<span class="keyword">lock</span>();</span><br><span class="line">      <span class="keyword">if</span> (!cacheValid) &#123;</span><br><span class="line">        <span class="comment">// 加写锁前需要先释放读锁</span></span><br><span class="line">        rwl.readLock().unlock();</span><br><span class="line">        rwl.writeLock().<span class="keyword">lock</span>();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="comment">//设置值</span></span><br><span class="line">          <span class="keyword">if</span> (!cacheValid) &#123;</span><br><span class="line">            data = ...</span><br><span class="line">            cacheValid = <span class="literal">true</span>;</span><br><span class="line">          &#125;</span><br><span class="line">          <span class="comment">// 写锁退化为读锁 已经修改完成 其他线程可读</span></span><br><span class="line">          rwl.readLock().<span class="keyword">lock</span>();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          <span class="comment">// 释放写锁</span></span><br><span class="line">          rwl.writeLock().unlock(); </span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line"> </span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        use(data);</span><br><span class="line">      &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">          <span class="comment">//释放读锁</span></span><br><span class="line">        rwl.readLock().unlock();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><h2 id="数据结构是一切的基础"><a href="#数据结构是一切的基础" class="headerlink" title="数据结构是一切的基础"></a>数据结构是一切的基础</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public <span class="class"><span class="keyword">class</span> <span class="title">ReentrantReadWriteLock</span></span></span><br><span class="line"><span class="class">        <span class="title">implements</span> <span class="title">ReadWriteLock</span>, <span class="title">java</span>.<span class="title">io</span>.<span class="title">Serializable</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">ReentrantReadWriteLock</span>.<span class="type">ReadLock</span> readerLock;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> <span class="type">ReentrantReadWriteLock</span>.<span class="type">WriteLock</span> writerLock;</span><br><span class="line">    <span class="keyword">final</span> <span class="type">Sync</span> sync;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> static <span class="class"><span class="keyword">class</span> <span class="title">Sync</span> <span class="keyword">extends</span> <span class="title">AbstractQueuedSynchronizer</span> </span>&#123;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">NonfairSync</span> <span class="keyword">extends</span> <span class="title">Sync</span> </span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ReetrantReadWriteLock与 <a href="/post/4b83aa2d.html" title="&lt;b&gt;ReentrantLock&lt;&#x2F;b&gt;"><b>ReentrantLock</b></a> 的结构基本一致 :</p>
+<p><img src="../resource/java/Aqs%E7%BB%93%E6%9E%84.jpg" alt=""></p>
+<p><img src="../resource/java/sync%E7%BB%A7%E6%89%BF.jpg" alt=""></p>
+<h2 id="重要类"><a href="#重要类" class="headerlink" title="重要类"></a>重要类</h2><h3 id="ReadLock"><a href="#ReadLock" class="headerlink" title="ReadLock"></a>ReadLock</h3><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">ReadLock</span> <span class="keyword">implements</span> <span class="title">Lock</span>, <span class="title">java</span>.<span class="title">io</span>.<span class="title">Serializable</span> </span>&#123;</span><br><span class="line">       <span class="comment">// Aqs 结构</span></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">final</span> Sync sync;</span><br><span class="line">       <span class="function"><span class="keyword">protected</span> <span class="title">ReadLock</span><span class="params">(ReentrantReadWriteLock lock)</span> </span>&#123;</span><br><span class="line">           sync = lock.sync;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//锁定</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="comment">//使用共享锁</span></span><br><span class="line">           sync.acquireShared(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">lockInterruptibly</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">           sync.acquireSharedInterruptibly(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//尝试获取共享锁</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="function"><span class="keyword">return</span> sync.<span class="title">tryReadLock</span><span class="params">()</span></span>;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="keyword">boolean</span> tryLock(<span class="keyword">long</span> timeout, TimeUnit unit)</span><br><span class="line">               <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">           <span class="keyword">return</span> sync.tryAcquireSharedNanos(<span class="number">1</span>, unit.toNanos(timeout));</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//释放共享锁</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           sync.releaseShared(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function">Condition <span class="title">newCondition</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="WriteLock"><a href="#WriteLock" class="headerlink" title="WriteLock"></a>WriteLock</h3><figure class="highlight aspectj"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">WriteLock</span> <span class="keyword">implements</span> <span class="title">Lock</span>, <span class="title">java</span>.<span class="title">io</span>.<span class="title">Serializable</span> </span>&#123;</span><br><span class="line">      <span class="comment">// 使用Aqs结构</span></span><br><span class="line">       <span class="keyword">private</span> <span class="keyword">final</span> Sync sync;</span><br><span class="line"></span><br><span class="line">       <span class="function"><span class="keyword">protected</span> <span class="title">WriteLock</span><span class="params">(ReentrantReadWriteLock lock)</span> </span>&#123;</span><br><span class="line">           sync = lock.sync;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//使用Aqs的独占锁</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           sync.acquire(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">lockInterruptibly</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">           sync.acquireInterruptibly(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//尝试获取写锁</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">( )</span> </span>&#123;</span><br><span class="line">           <span class="function"><span class="keyword">return</span> sync.<span class="title">tryWriteLock</span><span class="params">()</span></span>;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="keyword">boolean</span> tryLock(<span class="keyword">long</span> timeout, TimeUnit unit)</span><br><span class="line">               <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">           <span class="keyword">return</span> sync.tryAcquireNanos(<span class="number">1</span>, unit.toNanos(timeout));</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//释放独占锁</span></span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           sync.release(<span class="number">1</span>);</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function">Condition <span class="title">newCondition</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="function"><span class="keyword">return</span> sync.<span class="title">newCondition</span><span class="params">()</span></span>;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">boolean</span> <span class="title">isHeldByCurrentThread</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="function"><span class="keyword">return</span> sync.<span class="title">isHeldExclusively</span><span class="params">()</span></span>;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="keyword">public</span> <span class="function"><span class="keyword">int</span> <span class="title">getHoldCount</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           <span class="function"><span class="keyword">return</span> sync.<span class="title">getWriteHoldCount</span><span class="params">()</span></span>;</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>说明：</p>
+<ol>
+<li>读锁写锁均使用Aqs结构来实现锁定和释放</li>
+<li>读锁使用的是共享锁模式</li>
+<li>写锁使用的是 独占锁模式</li>
+</ol>
+<h3 id="sync"><a href="#sync" class="headerlink" title="sync"></a>sync</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Sync</span> <span class="keyword">extends</span> <span class="title">AbstractQueuedSynchronizer</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 共享锁 移动位数</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> SHARED_SHIFT   = <span class="number">16</span>;</span><br><span class="line">    <span class="comment">// 共享锁基础单位， 没增加一个单位共享锁 其实是加上1&lt;&lt;16的数</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> SHARED_UNIT    = (<span class="number">1</span> &lt;&lt; SHARED_SHIFT);</span><br><span class="line">    <span class="comment">//最大的锁数量，锁的数量不能超过 2^16-1个 </span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAX_COUNT      = (<span class="number">1</span> &lt;&lt; SHARED_SHIFT) - <span class="number">1</span>;</span><br><span class="line">    <span class="comment">//计算独占锁数量的中间变量</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> EXCLUSIVE_MASK = (<span class="number">1</span> &lt;&lt; SHARED_SHIFT) - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取共享锁占有数量  无符号右移16位 获得读写数量</span></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">sharedCount</span><span class="params">(<span class="keyword">int</span> c)</span>    </span>&#123; <span class="keyword">return</span> c &gt;&gt;&gt; SHARED_SHIFT; &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 获取独占锁占有数量   与mask做&amp;运算 消除高16位 结果就是独占锁数量</span></span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">exclusiveCount</span><span class="params">(<span class="keyword">int</span> c)</span> </span>&#123; <span class="keyword">return</span> c &amp; EXCLUSIVE_MASK; &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 读锁当前线程持有数量</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> ThreadLocalHoldCounter readHolds;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//最后一个成功获取读锁的线程 的读锁持有数量</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> HoldCounter cachedHoldCounter;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//第一个持有读写的线程</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> Thread firstReader = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> <span class="keyword">int</span> firstReaderHoldCount;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>说明：</p>
+<ol>
+<li>AbstractQueuedSychronized 的状态是int 的state属性 int是32位的</li>
+<li>由于state是32位，只有1个状态，所以ReentrantReadWriteLock通过高16位和低16位分隔，高16位存储读锁，低16位存储写锁。</li>
+<li>锁的最大数量是2^16-1个</li>
+</ol>
+<p><img src="../resource/java/%E8%AF%BB%E5%86%99%E9%94%81%E6%95%B0%E9%87%8F.jpg" alt=""></p>
+<h2 id="重要函数"><a href="#重要函数" class="headerlink" title="重要函数"></a>重要函数</h2><h3 id="sync-tryAcquireShared"><a href="#sync-tryAcquireShared" class="headerlink" title="sync.tryAcquireShared();"></a>sync.tryAcquireShared();</h3><figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="built_in">int</span> tryAcquireShared(<span class="built_in">int</span> unused) &#123;</span><br><span class="line">    <span class="comment">// 当前线程</span></span><br><span class="line">    Thread current = Thread.currentThread();</span><br><span class="line">    <span class="built_in">int</span> c = getState();</span><br><span class="line">    <span class="comment">// 有写锁 并且不是当前线程</span></span><br><span class="line">    <span class="keyword">if</span> (exclusiveCount(c) != <span class="number">0</span> &amp;&amp;</span><br><span class="line">        getExclusiveOwnerThread() != current)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    <span class="comment">// 获取读锁个数</span></span><br><span class="line">    <span class="built_in">int</span> r = sharedCount(c);</span><br><span class="line">   <span class="comment">//有写锁等待唤醒 读锁增加成功</span></span><br><span class="line">    <span class="keyword">if</span> (!readerShouldBlock() &amp;&amp;</span><br><span class="line">        r &lt; MAX_COUNT &amp;&amp;</span><br><span class="line">        compareAndSetState(c, c + SHARED_UNIT)) &#123;</span><br><span class="line">        <span class="comment">//设置计数器</span></span><br><span class="line">        <span class="keyword">if</span> (r == <span class="number">0</span>) &#123;</span><br><span class="line">            firstReader = current;</span><br><span class="line">            firstReaderHoldCount = <span class="number">1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (firstReader == current) &#123;</span><br><span class="line">            firstReaderHoldCount++;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            HoldCounter rh = cachedHoldCounter;</span><br><span class="line">            <span class="keyword">if</span> (rh == <span class="literal">null</span> || rh.tid != getThreadId(current))</span><br><span class="line">                cachedHoldCounter = rh = readHolds.<span class="keyword">get</span>();</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (rh.count == <span class="number">0</span>)</span><br><span class="line">                readHolds.<span class="keyword">set</span>(rh);</span><br><span class="line">            rh.count++;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//表示还可以获取</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 兜底策略 处理 并发CAS miss的场景。</span></span><br><span class="line">    <span class="keyword">return</span> fullTryAcquireShared(current);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static <span class="keyword">final</span> <span class="keyword">class</span> <span class="symbol">NonfairSync</span> <span class="symbol">extends</span> <span class="symbol">Sync</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">bool</span>ean writerShouldBlock() &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>; <span class="comment">// writers can always barge</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">final</span> <span class="built_in">bool</span>ean readerShouldBlock() &#123;</span><br><span class="line">        <span class="keyword">return</span> apparentlyFirstQueuedIsExclusive();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 判断是否有写锁在等待唤醒 此处是为了防止写锁出现饿死现象。所以后面一个节点如果是写锁，则需要阻塞住读锁的资源获取。</span></span><br><span class="line"><span class="keyword">final</span> <span class="built_in">bool</span>ean apparentlyFirstQueuedIsExclusive() &#123;</span><br><span class="line">    Node h, s;</span><br><span class="line">    <span class="keyword">return</span> (h = head) != <span class="literal">null</span> &amp;&amp;</span><br><span class="line">        (s = h.next)  != <span class="literal">null</span> &amp;&amp;</span><br><span class="line">        !s.isShared()         &amp;&amp;</span><br><span class="line">        s.thread != <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 完整的尝试获取方案 ，包含了兜底 和读锁重入检查</span></span><br><span class="line"><span class="keyword">final</span> <span class="built_in">int</span> fullTryAcquireShared(Thread current) &#123;</span><br><span class="line">    HoldCounter rh = <span class="literal">null</span>;</span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">        <span class="comment">//当前状态</span></span><br><span class="line">        <span class="built_in">int</span> c = getState();</span><br><span class="line">        <span class="comment">// 有写锁</span></span><br><span class="line">        <span class="keyword">if</span> (exclusiveCount(c) != <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">//不是当前线程 获取失败</span></span><br><span class="line">            <span class="keyword">if</span> (getExclusiveOwnerThread() != current)</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (readerShouldBlock()) &#123;</span><br><span class="line">            <span class="comment">//有写锁等待 读锁以获取 不用重入获取</span></span><br><span class="line">            <span class="keyword">if</span> (firstReader == current) &#123;</span><br><span class="line">                <span class="comment">// assert firstReaderHoldCount &gt; 0;</span></span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// 设置计数器</span></span><br><span class="line">                <span class="keyword">if</span> (rh == <span class="literal">null</span>) &#123;</span><br><span class="line">                    rh = cachedHoldCounter;</span><br><span class="line">                    <span class="keyword">if</span> (rh == <span class="literal">null</span> || rh.tid != getThreadId(current)) &#123;</span><br><span class="line">                        rh = readHolds.<span class="keyword">get</span>();</span><br><span class="line">                        <span class="keyword">if</span> (rh.count == <span class="number">0</span>)</span><br><span class="line">                            readHolds.remove();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (rh.count == <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// 越界检查</span></span><br><span class="line">        <span class="keyword">if</span> (sharedCount(c) == MAX_COUNT)</span><br><span class="line">            throw new Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">        <span class="comment">// 尝试获取 设置计数器</span></span><br><span class="line">        <span class="keyword">if</span> (compareAndSetState(c, c + SHARED_UNIT)) &#123;</span><br><span class="line">            <span class="keyword">if</span> (sharedCount(c) == <span class="number">0</span>) &#123;</span><br><span class="line">                firstReader = current;</span><br><span class="line">                firstReaderHoldCount = <span class="number">1</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (firstReader == current) &#123;</span><br><span class="line">                firstReaderHoldCount++;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (rh == <span class="literal">null</span>)</span><br><span class="line">                    rh = cachedHoldCounter;</span><br><span class="line">                <span class="keyword">if</span> (rh == <span class="literal">null</span> || rh.tid != getThreadId(current))</span><br><span class="line">                    rh = readHolds.<span class="keyword">get</span>();</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (rh.count == <span class="number">0</span>)</span><br><span class="line">                    readHolds.<span class="keyword">set</span>(rh);</span><br><span class="line">                rh.count++;</span><br><span class="line">                cachedHoldCounter = rh; <span class="comment">// cache for release</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>说明：</p>
+<ol>
+<li>如果写锁被其他线程持有，则无法获取读锁，去Aqc中等待。</li>
+<li>读写锁都不能超过2^16-1个，所以需要通过ThreadLocal来记录数量</li>
+<li>并发读锁获取会到只CAS miss 需要fullTryAcquireShared 来自旋兜底</li>
+</ol>
+<h3 id="tryReleaseShared"><a href="#tryReleaseShared" class="headerlink" title="tryReleaseShared"></a>tryReleaseShared</h3><figure class="highlight reasonml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">protected final boolean <span class="keyword">try</span><span class="constructor">ReleaseShared(<span class="params">int</span> <span class="params">unused</span>)</span> &#123;</span><br><span class="line">    <span class="comment">// 当前线程</span></span><br><span class="line">    Thread current = <span class="module-access"><span class="module"><span class="identifier">Thread</span>.</span></span>current<span class="constructor">Thread()</span>;</span><br><span class="line">    <span class="comment">// 如果第一个读锁是当前线程</span></span><br><span class="line">    <span class="keyword">if</span> (firstReader<span class="operator"> == </span>current) &#123;</span><br><span class="line">        <span class="comment">// assert firstReaderHoldCount &gt; 0;</span></span><br><span class="line">        <span class="comment">// 并且当前线程只占有1个则取消 否则-1</span></span><br><span class="line">        <span class="keyword">if</span> (firstReaderHoldCount<span class="operator"> == </span><span class="number">1</span>)</span><br><span class="line">            firstReader = null;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">            firstReaderHoldCount--;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 获取最后一个加读锁的线程</span></span><br><span class="line">        HoldCounter rh = cachedHoldCounter;</span><br><span class="line">        <span class="comment">// 为null 或者不是当前线程</span></span><br><span class="line">        <span class="keyword">if</span> (rh<span class="operator"> == </span>null<span class="operator"> || </span>rh.tid != get<span class="constructor">ThreadId(<span class="params">current</span>)</span>)</span><br><span class="line">            <span class="comment">// 获取当前线程的计数器</span></span><br><span class="line">            rh = readHolds.get<span class="literal">()</span>;</span><br><span class="line">        <span class="built_in">int</span> count = rh.count;</span><br><span class="line">        <span class="comment">//重新设置计数器</span></span><br><span class="line">        <span class="keyword">if</span> (count &lt;= <span class="number">1</span>) &#123;</span><br><span class="line">            readHolds.remove<span class="literal">()</span>;</span><br><span class="line">            <span class="keyword">if</span> (count &lt;= <span class="number">0</span>)</span><br><span class="line">                throw unmatched<span class="constructor">UnlockException()</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        --rh.count;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 自旋 设置新的锁计数值。</span></span><br><span class="line">    for (;;) &#123;</span><br><span class="line">        <span class="built_in">int</span> c = get<span class="constructor">State()</span>;</span><br><span class="line">        <span class="built_in">int</span> nextc = c - SHARED_UNIT;</span><br><span class="line">        <span class="keyword">if</span> (compare<span class="constructor">AndSetState(<span class="params">c</span>, <span class="params">nextc</span>)</span>)</span><br><span class="line">            <span class="comment">//只有当读写锁都是0的时候，才会唤醒后续节点</span></span><br><span class="line">            return nextc<span class="operator"> == </span><span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="sync-tryAcquire"><a href="#sync-tryAcquire" class="headerlink" title="sync.tryAcquire"></a>sync.tryAcquire</h3><figure class="highlight reasonml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">protected final boolean <span class="keyword">try</span><span class="constructor">Acquire(<span class="params">int</span> <span class="params">acquires</span>)</span> &#123;</span><br><span class="line">    <span class="comment">//当前线程</span></span><br><span class="line">    Thread current = <span class="module-access"><span class="module"><span class="identifier">Thread</span>.</span></span>current<span class="constructor">Thread()</span>;</span><br><span class="line">    <span class="built_in">int</span> c = get<span class="constructor">State()</span>;</span><br><span class="line">    <span class="built_in">int</span> w = exclusive<span class="constructor">Count(<span class="params">c</span>)</span>;</span><br><span class="line">    <span class="comment">//有锁</span></span><br><span class="line">    <span class="keyword">if</span> (c != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">//有写锁 并且不是当前线程占有 则不可以获取</span></span><br><span class="line">        <span class="keyword">if</span> (w<span class="operator"> == </span><span class="number">0</span><span class="operator"> || </span>current != get<span class="constructor">ExclusiveOwnerThread()</span>)</span><br><span class="line">            return <span class="literal">false</span>;</span><br><span class="line">        <span class="comment">// 大于最大数 不可再获取</span></span><br><span class="line">        <span class="keyword">if</span> (w + exclusive<span class="constructor">Count(<span class="params">acquires</span>)</span> &gt; MAX_COUNT)</span><br><span class="line">            throw <span class="keyword">new</span> <span class="constructor">Error(<span class="string">"Maximum lock count exceeded"</span>)</span>;</span><br><span class="line">        <span class="comment">// 重入  获取</span></span><br><span class="line">        set<span class="constructor">State(<span class="params">c</span> + <span class="params">acquires</span>)</span>;</span><br><span class="line">        return <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 非公平锁 write始终为false  尝试获取锁资源</span></span><br><span class="line">    <span class="keyword">if</span> (writer<span class="constructor">ShouldBlock()</span> <span class="pattern-match"><span class="operator">||</span></span></span><br><span class="line"><span class="pattern-match">        !compare<span class="constructor">AndSetState(<span class="params">c</span>, <span class="params">c</span> + <span class="params">acquires</span>)</span>)</span></span><br><span class="line"><span class="pattern-match">        return <span class="literal">false</span>;</span></span><br><span class="line"><span class="pattern-match">    set<span class="constructor">ExclusiveOwnerThread(<span class="params">current</span>)</span>;</span></span><br><span class="line"><span class="pattern-match">    return <span class="literal">true</span>;</span></span><br><span class="line"><span class="pattern-match">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>说明： 写锁在其他线程占据有锁的情况下不可以加锁。</p>
+<h3 id="tryRelease"><a href="#tryRelease" class="headerlink" title="tryRelease"></a>tryRelease</h3><figure class="highlight reasonml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">protected final boolean <span class="keyword">try</span><span class="constructor">Release(<span class="params">int</span> <span class="params">releases</span>)</span> &#123;</span><br><span class="line">    <span class="comment">//是否当前线程独占</span></span><br><span class="line">    <span class="keyword">if</span> (!is<span class="constructor">HeldExclusively()</span>)</span><br><span class="line">        throw <span class="keyword">new</span> <span class="constructor">IllegalMonitorStateException()</span>;</span><br><span class="line">    <span class="comment">// 释放资源</span></span><br><span class="line">    <span class="built_in">int</span> nextc = get<span class="constructor">State()</span> - releases;</span><br><span class="line">    <span class="comment">//如果独占锁=0 表示写锁已经释放</span></span><br><span class="line">    boolean free = exclusive<span class="constructor">Count(<span class="params">nextc</span>)</span><span class="operator"> == </span><span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (free)</span><br><span class="line">        <span class="comment">//设置null</span></span><br><span class="line">        set<span class="constructor">ExclusiveOwnerThread(<span class="params">null</span>)</span>;</span><br><span class="line">    set<span class="constructor">State(<span class="params">nextc</span>)</span>;</span><br><span class="line">    <span class="comment">//如果无写锁占有 唤醒后续线程</span></span><br><span class="line">    return free;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="总结："><a href="#总结：" class="headerlink" title="总结："></a>总结：</h1><p>ReentrantReadWriteLock 通过在同一个Sync（Aqs）上保存共享节点和独占节点来实现读写锁</p>
+<ol>
+<li>读写锁的数量分别使用 高16位读锁  低16位写锁 来记录</li>
+<li>读锁加锁的时候，会查询写锁数量，以及写锁占有线程，如果写锁数量！=0 并且占有线程不是当前线程，则不可以获取读锁</li>
+<li>读锁释放的时候，会判断当前锁的状态，如果当前无锁了，则会唤醒后续节点。</li>
+<li>写锁加锁的时候，会判断是否其他线程占有锁，是则不可获取锁</li>
+<li>写锁释放的时候，会判断写锁资源是不是已经被当前线程释放完毕，如果释放完毕，则会唤醒sync队列后续线程</li>
+</ol>
+<p>ReentrantReadWriteLock 问题：由于写锁需要等到所有读锁释放，所以写锁很可能出现饥饿问题。使用公平策略可以得到缓解，但是公平策略可能导致的是线程开销问题，因为即使可以立即获取锁，也要排在队列末尾</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 100px auto 0px auto; width: 90%; text-align: center;">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.jpg" alt="luke 微信支付"/>
+        <p>微信支付</p>
+      </div>
+    
+
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/java/" rel="tag"># java</a>
+          
+            <a href="/tags/%E5%B9%B6%E5%8F%91/" rel="tag"># 并发</a>
+          
+            <a href="/tags/JUC/" rel="tag"># JUC</a>
+          
+            <a href="/tags/%E9%94%81/" rel="tag"># 锁</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/post/4b83aa2d.html" rel="next" title="ReentrantLock源码分析">
+                <i class="fa fa-chevron-left"></i> ReentrantLock源码分析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/post/414857a8.html" rel="prev" title="StampedLock源码分析">
+                StampedLock源码分析 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="lv-container" data-id="city" data-uid="MTAyMC80ODg4NS8yNTM3OQ"></div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/avatar.jpg"
+                alt="luke" />
+            
+              <p class="site-author-name" itemprop="name">luke</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives">
+              
+                  <span class="site-state-item-count">29</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">20</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/zhuyuwaiting" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-github"></i>GitHub</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言："><span class="nav-number">1.</span> <span class="nav-text">前言：</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用示例"><span class="nav-number">2.</span> <span class="nav-text">使用示例</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#源码分析"><span class="nav-number">3.</span> <span class="nav-text">源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#数据结构是一切的基础"><span class="nav-number">3.1.</span> <span class="nav-text">数据结构是一切的基础</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重要类"><span class="nav-number">3.2.</span> <span class="nav-text">重要类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ReadLock"><span class="nav-number">3.2.1.</span> <span class="nav-text">ReadLock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#WriteLock"><span class="nav-number">3.2.2.</span> <span class="nav-text">WriteLock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sync"><span class="nav-number">3.2.3.</span> <span class="nav-text">sync</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#重要函数"><span class="nav-number">3.3.</span> <span class="nav-text">重要函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#sync-tryAcquireShared"><span class="nav-number">3.3.1.</span> <span class="nav-text">sync.tryAcquireShared();</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tryReleaseShared"><span class="nav-number">3.3.2.</span> <span class="nav-text">tryReleaseShared</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sync-tryAcquire"><span class="nav-number">3.3.3.</span> <span class="nav-text">sync.tryAcquire</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tryRelease"><span class="nav-number">3.3.4.</span> <span class="nav-text">tryRelease</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#总结："><span class="nav-number">4.</span> <span class="nav-text">总结：</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+      
+      <script type="text/javascript" charset="utf-8" src="/js/tagcloud.js"></script>
+      <script type="text/javascript" charset="utf-8" src="/js/tagcanvas.js"></script>
+      <div class="widget-wrap">
+          <div id="myCanvasContainer" class="widget tagcloud">
+              <canvas width="250" height="250" id="resCanvas" style="width:100%">
+                  <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/ArrayList/" rel="tag">ArrayList</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HashMap/" rel="tag">HashMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HashSet/" rel="tag">HashSet</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/JUC/" rel="tag">JUC</a><span class="tag-list-count">16</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/LinkedHashMap/" rel="tag">LinkedHashMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/LinkedList/" rel="tag">LinkedList</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Thread/" rel="tag">Thread</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/TreeMap/" rel="tag">TreeMap</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/java/" rel="tag">java</a><span class="tag-list-count">28</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/ppt/" rel="tag">ppt</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/volatile/" rel="tag">volatile</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B9%B6%E5%8F%91/" rel="tag">并发</a><span class="tag-list-count">21</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%94%B6%E8%97%8F/" rel="tag">收藏</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%94%B6%E8%97%8F%E5%A4%B9/" rel="tag">收藏夹</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B/" rel="tag">线程</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E9%9B%86%E5%90%88/" rel="tag">线程安全集合</a><span class="tag-list-count">5</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BA%BF%E7%A8%8B%E6%B1%A0/" rel="tag">线程池</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E8%B5%84%E6%BA%90/" rel="tag">资源</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%94%81/" rel="tag">锁</a><span class="tag-list-count">8</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%9B%86%E5%90%88/" rel="tag">集合</a><span class="tag-list-count">7</span></li></ul>
+              </canvas>
+          </div>
+      </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">luke</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+<div class="busuanzi-count">
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="site-uv">
+      本站访客数
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+      人次
+    </span>
+  
+
+  
+    <span class="site-pv">
+      本站总访问量
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+      次
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+    <script type="text/javascript">
+      (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+      })(document, 'script');
+    </script>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  <script type="text/javascript">
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url);
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x" /></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x" /></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';        
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
